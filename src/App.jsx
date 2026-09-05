@@ -690,9 +690,14 @@ function MergeExcel({ notify, sharedFile, setSharedFile }) {
     if (!format) return;
     
     if (format.toLowerCase() === 'xl' || format.toLowerCase() === 'xlsx') {
-      const blob = new Blob(['Mock Excel data...'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const fields = Object.keys(sampleRows[0] || {});
+      let html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body><table>';
+      html += '<tr>' + fields.map(f => `<th>${f}</th>`).join('') + '</tr>';
+      sampleRows.forEach(row => { html += '<tr>' + fields.map(f => `<td>${row[f]}</td>`).join('') + '</tr>'; });
+      html += '</table></body></html>';
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a'); link.href = url; link.download = 'Merged_Data.xlsx'; link.click();
+      const link = document.createElement('a'); link.href = url; link.download = 'Merged_Data.xls'; link.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
       notify('Merged records XL download started');
     } else {
