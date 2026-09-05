@@ -20,21 +20,12 @@ const sourceColumns = [
 
 const defaultMapping = (cols) => cols.map(c => ({ source: c, target: c, included: true }));
 
-const sampleRows = [
-  { id: 1, 'Asset Name': 'Latitude 5440 Laptop', Category: 'IT Equipment', Manufacturer: 'Dell', 'Model No': 'Latitude 5440', 'Item Description': '14-inch business laptop', 'Serial Number': 'DL-4X92-001', Location: 'Chennai Office', 'Project Name': 'Operations', Price: '72450', Tax: '18', User: 'Arjun Kumar', 'Asset ID': 'AST-1001' },
-  { id: 2, 'Asset Name': 'ThinkVision Monitor', Category: 'IT Equipment', Manufacturer: 'Lenovo', 'Model No': 'T24i-30', 'Item Description': '24-inch monitor', 'Serial Number': 'LV-9T20-882', Location: 'Bengaluru Office', 'Project Name': 'Finance', Price: '16800', Tax: '18', User: 'Maya Iyer', 'Asset ID': 'AST-1002' },
-  { id: 3, 'Asset Name': 'Office Chair', Category: 'Furniture', Manufacturer: 'Featherlite', 'Model No': '', 'Item Description': 'Ergonomic chair', 'Serial Number': 'FL-000473', Location: 'Chennai Office', 'Project Name': 'Administration', Price: '12500', Tax: '18', User: 'Rahul S', 'Asset ID': 'AST-1003' },
-  { id: 4, 'Asset Name': 'MacBook Pro', Category: 'IT Equipment', Manufacturer: 'Apple', 'Model No': 'A2918', 'Item Description': '14-inch M3 Pro laptop', 'Serial Number': '1.23456E+12', Location: 'Mumbai Office', 'Project Name': 'Design', Price: '189900', Tax: '18', User: 'Sara Khan', 'Asset ID': 'AST-1004' },
-  { id: 5, 'Asset Name': 'LaserJet Pro', Category: 'IT Equipment', Manufacturer: 'HP', 'Model No': 'M404dn', 'Item Description': 'Mono laser printer', 'Serial Number': 'HP-8824-441', Location: 'Chennai Office', 'Project Name': 'Operations', Price: '35600', Tax: '18', User: '', 'Asset ID': 'AST-1005' },
-  { id: 6, 'Asset Name': 'Latitude 5440 Laptop', Category: 'IT Equipment', Manufacturer: 'Dell', 'Model No': 'Latitude 5440', 'Item Description': '14-inch business laptop', 'Serial Number': 'DL-4X92-001', Location: 'Chennai Office', 'Project Name': 'Operations', Price: '72450', Tax: '18', User: 'Arjun Kumar', 'Asset ID': 'AST-1006' },
-  { id: 7, 'Asset Name': 'iPhone 15', Category: 'Mobile Device', Manufacturer: 'Apple', 'Model No': 'A3102', 'Item Description': '128 GB handset', 'Serial Number': '9.87654E+13', Location: 'Bengaluru Office', 'Project Name': 'Sales', Price: '66900', Tax: '18', User: 'Nikhil Rao', 'Asset ID': 'AST-1007' },
-  { id: 8, 'Asset Name': 'Conference Table', Category: 'Furniture', Manufacturer: 'Godrej', 'Model No': 'CT-8', 'Item Description': '8-seat meeting table', 'Serial Number': 'GD-CT-912', Location: 'Mumbai Office', 'Project Name': '', Price: '48200', Tax: '18', User: 'Facilities', 'Asset ID': 'AST-1008' },
-];
+const sampleRows = [];
 
 const comparisonRows = {
-  common: sampleRows.slice(0, 4),
-  first: [sampleRows[4], sampleRows[5]],
-  second: [sampleRows[6], sampleRows[7]],
+  common: [],
+  first: [],
+  second: [],
 };
 
 
@@ -183,7 +174,7 @@ function CleanExcel({ notify, ask, askFormat, sharedFile, setSharedFile }) {
   const [rows, setRows] = useState(sampleRows);
   const [columns, setColumns] = useState(sourceColumns);
   const [sheets, setSheets] = useState(['Asset Data', 'Laptop Data', 'Monitor Data']);
-  const [recordCount, setRecordCount] = useState(5000);
+  const [recordCount, setRecordCount] = useState(0);
   const [serverSession, setServerSession] = useState(false);
   const [changes, setChanges] = useState([]);
   const [activeTool, setActiveTool] = useState(null);
@@ -233,9 +224,8 @@ function CleanExcel({ notify, ask, askFormat, sharedFile, setSharedFile }) {
   const uploadDone = async (uploaded) => {
     if (!uploaded) {
       setServerSession(false); setRows(sampleRows); setColumns(sourceColumns); setSheets(['Asset Data', 'Laptop Data', 'Monitor Data']);
-      setSheet('Asset Data'); setRecordCount(5000); setMapping(defaultMapping(sourceColumns)); setMappingConfidence({}); setIssues(null);
-      setFile({ name: 'Sample_Asset_Data.xlsx', size: '1.8 MB', rows: 5000, columns: 12, sheets: 3 });
-      notify('Sample data loaded', 'info');
+      setSheet('Asset Data'); setRecordCount(0); setMapping(defaultMapping(sourceColumns)); setMappingConfidence({}); setIssues(null);
+      setFile(null);
       return;
     }
     let details;
@@ -318,7 +308,7 @@ function CleanExcel({ notify, ask, askFormat, sharedFile, setSharedFile }) {
   const restart = async () => {
     try { if (serverSession) await api.reset(); } catch { /* The UI can still clear its local session. */ }
     setStep(1); setFile(null); setServerSession(false); setFinalReady(false); setRows(sampleRows); setColumns(sourceColumns);
-    setSheets(['Asset Data', 'Laptop Data', 'Monitor Data']); setSheet('Asset Data'); setRecordCount(5000); setMapping(defaultMapping(sourceColumns)); setIssues(null); setChanges([]);
+    setSheets(['Asset Data', 'Laptop Data', 'Monitor Data']); setSheet('Asset Data'); setRecordCount(0); setMapping(defaultMapping(sourceColumns)); setIssues(null); setChanges([]);
   };
   const continueStep = () => setStep(current => Math.min(current + 1, 6));
   const showConfirm = (props) => ask({ ...props, onConfirm: () => { props.onConfirm?.(); } });
@@ -371,7 +361,6 @@ function UploadStep({ file, onUpload, onContinue }) {
         <small>.xlsx, .xls and .csv supported</small>
       </button>
       <input ref={fileInput} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} />
-      <button className="demo-link" onClick={() => onUpload()}>Or explore with sample asset data <ArrowRight size={15} /></button>
     </> : <div className="file-ready"><div className="file-ready-icon"><FileSpreadsheet size={28} /></div><div className="file-info"><span><CheckCircle2 size={17} /> File uploaded successfully</span><h3>{file.name}</h3><p>{Number(file.rows).toLocaleString()} rows <i /> {file.columns} columns <i /> {file.sheets} sheets</p></div><button className="icon-button" title="Choose a different file" onClick={() => fileInput.current?.click()}><RefreshCw size={18} /></button><input ref={fileInput} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} /></div>}
     <StepFooter canContinue={!!file} onContinue={onContinue} />
   </div>;
@@ -705,7 +694,7 @@ function LegacyCompareExcel({ notify, ask, askFormat }) {
   return <section className="page compare-page"><PageIntro eyebrow="COMPARE EXCEL" title="Compare Excel files" text="Find what is new, missing, or common across two files." />
     <div className="compare-card">
       <div className="compare-upload-grid"><CompareUpload title="First Excel file" file={files.first} inputRef={firstRef} onClick={() => firstRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('first', event.target.files[0])} /><div className="vs-badge">VS</div><CompareUpload title="Second Excel file" file={files.second} inputRef={secondRef} onClick={() => secondRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('second', event.target.files[0])} /></div>
-      {!bothFiles && <button className="demo-link compare-demo" onClick={() => { setFile('first'); setFile('second'); }}>Use sample files to explore comparison <ArrowRight size={15} /></button>}
+      
       {bothFiles && <div className="compare-controls"><div><span>Compare records using</span><select><option>Serial Number</option><option>Asset ID</option><option>Asset Name</option></select></div><div className="comparison-warning"><AlertTriangle size={17} /> Serial Number has 18 duplicate values. <button onClick={() => notify('Duplicate values highlighted below', 'warning')}>View duplicates</button></div><button className="button button-primary" onClick={compare}><GitCompareArrows size={18} /> Compare files</button></div>}
     </div>
     {compared && <div className="comparison-results"><div className="results-head"><div><span className="eyebrow">COMPARISON COMPLETE</span><h2>Here’s what we found</h2></div><span className="done-pill"><CheckCircle2 size={16} /> Complete</span></div><div className="result-counts"><ResultCount label="First Excel" count="5,000" /><ResultCount label="Second Excel" count="5,250" /><ResultCount label="Common records" count="4,900" blue /><ResultCount label="Only in first" count="100" /><ResultCount label="Only in second" count="350" green /></div><div className="result-tabs">{[['common', 'Common records'], ['first', 'Only in first'], ['second', 'Only in second']].map(([key, label]) => <button key={key} className={tab === key ? 'selected' : ''} onClick={() => setTab(key)}>{label}<span>{key === 'common' ? '4,900' : key === 'first' ? '100' : '350'}</span></button>)}</div><div className="result-content"><div className="result-context"><div><h3>{tab === 'common' ? 'Records in both files' : tab === 'first' ? 'Records only in the first file' : 'New records found'}</h3><p>{tab === 'second' ? 'These records are not present in the first Excel file.' : 'Review complete records below before taking action.'}</p></div>{tab === 'second' && <div><button className="button button-secondary" onClick={downloadNew}><Download size={16} /> Extract new records</button><button className="button button-primary" onClick={() => ask({ title: 'Merge new records into the first file?', message: 'First Excel: 5,000 records. New records: 350. The final file will have 5,350 records.', confirm: 'Merge records', onConfirm: () => notify('350 records merged into the first file') } )}><Merge size={16} /> Merge into first</button></div>}</div><DataTable rows={comparisonRows[tab]} compact /></div></div>}
@@ -794,7 +783,7 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
           {secondHeaders.length > 0 && <div className="choice-row" style={{ marginTop: 15, justifyContent: 'center', maxHeight: 110, overflowY: 'auto' }}>{secondHeaders.map(h => <label key={h}><input type="checkbox" checked readOnly /> {h}</label>)}</div>}
         </div>
       </div>
-      {!bothFiles && <button className="demo-link compare-demo" onClick={useSamples}>Use sample files to explore comparison <ArrowRight size={15} /></button>}
+      
       {bothFiles && <div className="compare-controls"><div><span>Compare records using</span><select value={usingUploadedFiles ? field : 'Serial Number'} disabled={usingUploadedFiles && !fields.length} onChange={e => setField(e.target.value)}>{usingUploadedFiles ? fields.map(column => <option key={column}>{column}</option>) : <><option>Serial Number</option><option>Asset ID</option><option>Asset Name</option></>}</select></div>{usingUploadedFiles && !fields.length && <div className="comparison-warning"><AlertTriangle size={17} /> These files do not have an exact shared column name.</div>}<button className="button button-primary" disabled={usingUploadedFiles && !field} onClick={compare}><GitCompareArrows size={18} /> Compare files</button></div>}
     </div>
     {comparison && <div className="comparison-results"><div className="results-head"><div><span className="eyebrow">COMPARISON COMPLETE</span><h2>Here's what we found</h2></div><span className="done-pill"><CheckCircle2 size={16} /> Complete</span></div><div className="result-counts"><ResultCount label="First Excel" count={Number(counts.first).toLocaleString()} /><ResultCount label="Second Excel" count={Number(counts.second).toLocaleString()} /><ResultCount label="Common records" count={Number(counts.common).toLocaleString()} blue /><ResultCount label="Only in first" count={Number(counts.only_first).toLocaleString()} /><ResultCount label="Only in second" count={Number(counts.only_second).toLocaleString()} green /></div><div className="result-tabs">{[['common', 'Common records', counts.common], ['first', 'Only in first', counts.only_first], ['second', 'Only in second', counts.only_second], ['overall', 'Overall data', counts.overall]].map(([key, label, count]) => <button key={key} className={tab === key ? 'selected' : ''} onClick={() => setTab(key)}>{label}<span>{Number(count).toLocaleString()}</span></button>)}</div><div className="result-content"><div className="result-context"><div><h3>{tab === 'common' ? 'Records in both files' : tab === 'first' ? 'Records only in the first file' : tab === 'overall' ? 'Combined Master Data' : 'New records found'}</h3><p>{tab === 'second' ? 'These records are not present in the first Excel file.' : tab === 'overall' ? 'Unified outer join of both datasets.' : 'Review complete records below before taking action.'}</p></div>{tab === 'second' && <button className="button button-secondary" onClick={downloadNew}><Download size={16} /> Extract new records</button>}</div><DataTable rows={rowsWithIds(records[tab])} compact /></div></div>}
@@ -850,7 +839,7 @@ function MergeExcel({ notify, askFormat, sharedFile, setSharedFile }) {
 
   return <section className="page compare-page"><PageIntro eyebrow="MERGE EXCEL" title="Merge Data" text="Seamlessly append the records of two different datasets." />
     <div className="compare-card"><div className="compare-upload-grid"><CompareUpload title="Primary Excel file" file={files.first} inputRef={firstRef} onClick={() => firstRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('first', event.target.files[0])} /><div className="vs-badge">+</div><CompareUpload title="Secondary Excel file" file={files.second} inputRef={secondRef} onClick={() => secondRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('second', event.target.files[0])} /></div>
-      {!bothFiles && <button className="demo-link compare-demo" onClick={useSamples}>Use sample files to explore merging <ArrowRight size={15} /></button>}
+      
       {bothFiles && <div className="compare-controls"><div></div><button className="button button-primary" onClick={mergeFiles}><Merge size={18} /> Merge files</button></div>}
     </div>
     {mergedData && <div className="comparison-results"><div className="results-head"><div><span className="eyebrow">MERGE COMPLETE</span><h2>Files merged successfully</h2></div><span className="done-pill"><CheckCircle2 size={16} /> Complete</span></div><div className="result-counts"><ResultCount label="Primary Excel" count={files.first?.raw ? 'Uploaded' : '5,000'} /><ResultCount label="Secondary Excel" count={files.second?.raw ? 'Uploaded' : '4,100'} /><ResultCount label="Total merged records" count={mergedData.length.toLocaleString()} blue /></div><div className="result-content"><div className="result-context" style={{ marginTop: '20px' }}><div><h3>Ready for download</h3><p>Rows have been securely compiled and processed.</p></div><button className="button button-primary button-large" onClick={downloadNew}><Download size={16} /> Export Merged Data</button></div></div></div>}
