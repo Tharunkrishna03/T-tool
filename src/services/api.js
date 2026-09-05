@@ -35,6 +35,11 @@ export const api = {
     body.append('first', first); body.append('second', second); body.append('field', field);
     return (await client.post('/compare', body)).data;
   },
+  mergeFiles: async (first, second) => {
+    const body = new FormData();
+    body.append('first', first); body.append('second', second);
+    return (await client.post('/merge-files', body)).data;
+  },
   reset: async () => (await client.post('/reset')).data,
 };
 

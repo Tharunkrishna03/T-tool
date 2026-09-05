@@ -405,6 +405,25 @@ async def compare_fields(first: UploadFile = File(...), second: UploadFile = Fil
     return {"shared_columns": shared, "first_columns": first_columns, "second_columns": second_columns}
 
 
+@app.post("/api/merge-files")
+async def merge_uploaded_files(
+    first: UploadFile = File(...),
+    second: UploadFile = File(...)
+) -> dict[str, Any]:
+    def read_uploaded(upload: UploadFile) -> pd.DataFrame:
+        suffix = Path(upload.filename or "").suffix.lower()
+        if suffix not in {".xlsx", ".xls", ".csv"}:
+            raise HTTPException(400, "Both files must be Excel or CSV files.")
+        if suffix == ".csv":
+            return pd.read_csv(upload.file, dtype=str, keep_default_na=False).fillna("")
+        return pd.read_excel(upload.file, dtype=str, keep_default_na=False).fillna("")
+        
+    first_frame = read_uploaded(first)
+    second_frame = read_uploaded(second)
+    merged = pd.concat([first_frame, second_frame], ignore_index=True).fillna("")
+    return {"message": "Files merged successfully", "rows": merged.to_dict("records")}
+
+
 @app.post("/api/export-csv")
 def export_csv() -> StreamingResponse:
     frame = require_data()

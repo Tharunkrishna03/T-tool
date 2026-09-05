@@ -665,12 +665,12 @@ function ConfirmDialog({ title, message, confirm = 'Continue', onConfirm, onClos
 function MergeExcel({ notify, sharedFile, setSharedFile }) {
   const firstRef = useRef(null), secondRef = useRef(null);
   const [files, setFiles] = useState({ first: null, second: null });
-  const [merged, setMerged] = useState(false);
+  const [mergedData, setMergedData] = useState(null);
   const bothFiles = files.first && files.second;
 
   const setFile = (side, item) => {
     setFiles(old => ({ ...old, [side]: item ? { name: item.name, rows: 'Ready to merge', raw: item } : { name: side === 'first' ? 'Dataset_One.xlsx' : 'Dataset_Two.xlsx', rows: side === 'first' ? '5,000' : '4,100', raw: null } }));
-    setMerged(false);
+    setMergedData(null);
     notify(`${side === 'first' ? 'First' : 'Second'} Excel file selected`);
   };
 
@@ -680,20 +680,31 @@ function MergeExcel({ notify, sharedFile, setSharedFile }) {
       setSharedFile(null);
     }
   }, [sharedFile]);
-  const useSamples = () => { setFiles({ first: { name: 'Dataset_One.xlsx', rows: '5,000', raw: null }, second: { name: 'Dataset_Two.xlsx', rows: '4,100', raw: null } }); setMerged(false); notify('Sample files loaded', 'info'); };
-  const mergeFiles = () => {
-    setMerged(true);
-    notify('Merge operation complete');
+  const useSamples = () => { setFiles({ first: { name: 'Dataset_One.xlsx', rows: '5,000', raw: null }, second: { name: 'Dataset_Two.xlsx', rows: '4,100', raw: null } }); setMergedData(null); notify('Sample files loaded', 'info'); };
+  const mergeFiles = async () => {
+    if (files.first?.raw && files.second?.raw) {
+      try {
+        const result = await api.mergeFiles(files.first.raw, files.second.raw);
+        setMergedData(result.rows);
+        notify('Merge operation complete');
+      } catch (error) {
+        notify(errorMessage(error, 'Could not merge these files.'), 'warning');
+      }
+    } else {
+      setMergedData([...sampleRows, ...sampleRows.map(r => ({ ...r, id: r.id + 100 }))]);
+      notify('Merge operation complete');
+    }
   };
   const downloadNew = () => {
     const format = window.prompt('Enter download format (csv or xl):', 'csv');
     if (!format) return;
     
+    const dataToExport = mergedData || sampleRows;
     if (format.toLowerCase() === 'xl' || format.toLowerCase() === 'xlsx') {
-      const fields = Object.keys(sampleRows[0] || {});
+      const fields = Object.keys(dataToExport[0] || {});
       let html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body><table>';
       html += '<tr>' + fields.map(f => `<th>${f}</th>`).join('') + '</tr>';
-      sampleRows.forEach(row => { html += '<tr>' + fields.map(f => `<td>${row[f]}</td>`).join('') + '</tr>'; });
+      dataToExport.forEach(row => { html += '<tr>' + fields.map(f => `<td>${row[f] ?? ''}</td>`).join('') + '</tr>'; });
       html += '</table></body></html>';
       const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
       const url = URL.createObjectURL(blob);
@@ -701,7 +712,7 @@ function MergeExcel({ notify, sharedFile, setSharedFile }) {
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
       notify('Merged records XL download started');
     } else {
-      downloadRows(sampleRows, 'Merged_Data.csv');
+      downloadRows(dataToExport, 'Merged_Data.csv');
       notify('Merged records CSV download started');
     }
   };
@@ -711,7 +722,7 @@ function MergeExcel({ notify, sharedFile, setSharedFile }) {
       {!bothFiles && <button className="demo-link compare-demo" onClick={useSamples}>Use sample files to explore merging <ArrowRight size={15} /></button>}
       {bothFiles && <div className="compare-controls"><div></div><button className="button button-primary" onClick={mergeFiles}><Merge size={18} /> Merge files</button></div>}
     </div>
-    {merged && <div className="comparison-results"><div className="results-head"><div><span className="eyebrow">MERGE COMPLETE</span><h2>Files merged successfully</h2></div><span className="done-pill"><CheckCircle2 size={16} /> Complete</span></div><div className="result-counts"><ResultCount label="Primary Excel" count="5,000" /><ResultCount label="Secondary Excel" count="4,100" /><ResultCount label="Total merged records" count="9,100" blue /></div><div className="result-content"><div className="result-context" style={{ marginTop: '20px' }}><div><h3>Ready for download</h3><p>Rows have been securely compiled and processed.</p></div><button className="button button-primary button-large" onClick={downloadNew}><Download size={16} /> Export Merged Data CSV</button></div></div></div>}
+    {mergedData && <div className="comparison-results"><div className="results-head"><div><span className="eyebrow">MERGE COMPLETE</span><h2>Files merged successfully</h2></div><span className="done-pill"><CheckCircle2 size={16} /> Complete</span></div><div className="result-counts"><ResultCount label="Primary Excel" count={files.first?.raw ? 'Uploaded' : '5,000'} /><ResultCount label="Secondary Excel" count={files.second?.raw ? 'Uploaded' : '4,100'} /><ResultCount label="Total merged records" count={mergedData.length.toLocaleString()} blue /></div><div className="result-content"><div className="result-context" style={{ marginTop: '20px' }}><div><h3>Ready for download</h3><p>Rows have been securely compiled and processed.</p></div><button className="button button-primary button-large" onClick={downloadNew}><Download size={16} /> Export Merged Data</button></div></div></div>}
   </section>;
 }
 
