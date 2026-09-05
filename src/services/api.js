@@ -1,8 +1,10 @@
 import axios from 'axios';
 
-// In Electron, the local FastAPI process is started before the window opens.
-// VITE_API_URL also makes the UI easy to run against another local port in development.
-const client = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api', timeout: 30000 });
+// In Electron and local testing, use the local Python FastAPI process
+// On web (Vercel), automatically point to the deployed Render backend
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const defaultBaseUrl = isLocal ? 'http://127.0.0.1:8000/api' : 'https://t-tool.onrender.com/api';
+const client = axios.create({ baseURL: import.meta.env.VITE_API_URL || defaultBaseUrl, timeout: 30000 });
 
 export const api = {
   uploadExcel: async (file) => {
