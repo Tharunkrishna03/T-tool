@@ -1,0 +1,38 @@
+{
+  "name": "excel-data-cleaner",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "desktop": "set \"ELECTRON_RUN_AS_NODE=\" && electron .",
+    "desktop:portable": "set \"ELECTRON_RUN_AS_NODE=\" && .\\artifacts\\Excel-Data-Cleaner-Portable.exe",
+    "build:backend": ".\\.venv\\Scripts\\pyinstaller.exe --noconfirm --clean --onefile --name ExcelDataCleanerBackend --distpath backend\\dist --workpath backend\\build --specpath backend backend\\app.py",
+    "dist:win": "npm run build && npm run build:backend && electron-builder --win nsis portable"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "axios": "latest",
+    "lucide-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "electron": "latest",
+    "electron-builder": "latest"
+  },
+  "build": {
+    "appId": "com.local.exceldatacleaner",
+    "productName": "Excel Data Cleaner",
+    "directories": { "output": "artifacts" },
+    "files": ["dist/**/*", "electron/**/*", "package.json"],
+    "extraResources": [{ "from": "backend/dist/ExcelDataCleanerBackend.exe", "to": "backend/ExcelDataCleanerBackend.exe" }],
+    "win": { "target": ["nsis", "portable"] },
+    "nsis": { "artifactName": "Excel-Data-Cleaner-Setup.exe" },
+    "portable": { "artifactName": "Excel-Data-Cleaner-Portable.exe" }
+  }
+}
