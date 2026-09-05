@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, CircleHelp, Download, FileSpreadsheet, Filter,
   FolderOpen, GitCompareArrows, GripVertical, Home, Info, LoaderCircle,
   Merge, MoreHorizontal, PencilLine, Plus, RefreshCw, Search, Settings,
-  ShieldCheck, Sparkles, TableProperties, Trash2, Undo2, Upload, X, ZoomIn, ZoomOut,
+  ShieldCheck, Sparkles, TableProperties, Trash2, Undo2, Upload, X, ZoomIn, ZoomOut, Scissors, Copy, ClipboardPaste, ArrowDownToLine, Eraser, Paintbrush 
 } from 'lucide-react';
 import { api } from './services/api';
 
@@ -282,6 +282,22 @@ function CleanExcel({ notify, ask, askFormat, sharedFile, setSharedFile }) {
     setChanges(old => [...old, { id, col, before }]);
     notify('Cell updated');
   };
+  const handleTableAction = async (action, payload) => {
+    if (action === 'DELETE_ROW') {
+      setRows(old => old.filter(row => row.id !== payload.id));
+      notify('Row deleted');
+    } else if (action === 'INSERT_ROW') {
+      setRows(old => {
+        const index = old.findIndex(r => r.id === payload.afterId);
+        const newRow = { id: Date.now() };
+        columns.forEach(c => newRow[c] = '');
+        const copy = [...old];
+        copy.splice(index + 1, 0, newRow);
+        return copy;
+      });
+      notify('Row inserted');
+    }
+  };
   const undo = async () => {
     const last = changes.at(-1);
     if (!last) return notify('There is no change to undo', 'info');
@@ -311,7 +327,7 @@ function CleanExcel({ notify, ask, askFormat, sharedFile, setSharedFile }) {
     <Stepper current={step} onSelect={(target) => target <= step && setStep(target)} />
     <div className="workflow-card">
       {step === 1 && <UploadStep file={file} onUpload={uploadDone} onContinue={continueStep} />}
-      {step === 2 && <ReviewStep rows={rows} sheet={sheet} sheets={sheets} rowCount={recordCount} columns={columns} search={search} setSearch={setSearch} onSheetChange={selectSheet} onMerge={mergeSheets} onEdit={commitCell} changes={changes} onUndo={undo} onBack={() => setStep(1)} onContinue={async () => { await refreshIssues(); setStep(3); }} />}
+      {step === 2 && <ReviewStep rows={rows} sheet={sheet} sheets={sheets} rowCount={recordCount} columns={columns} search={search} setSearch={setSearch} onSheetChange={selectSheet} onMerge={mergeSheets} onEdit={commitCell} onTableAction={handleTableAction} changes={changes} onUndo={undo} onBack={() => setStep(1)} onContinue={async () => { await refreshIssues(); setStep(3); }} />}
       {step === 3 && <CleanStep rows={rows} columns={columns} issues={issues} serverSession={serverSession} activeTool={activeTool} setActiveTool={setActiveTool} notify={notify} ask={showConfirm} onDataChanged={refreshPreview} onRefreshIssues={refreshIssues} onBack={() => setStep(2)} onContinue={continueStep} />}
       {step === 4 && <ArrangeStep mapping={mapping} setMapping={setMapping} file={file} columns={columns} confidence={mappingConfidence} setConfidence={setMappingConfidence} serverSession={serverSession} notify={notify} onBack={() => setStep(3)} onContinue={applyMapping} />}
       {step === 5 && <ValidateStep rows={rows} recordCount={recordCount} serverSession={serverSession} finalReady={finalReady} setFinalReady={setFinalReady} notify={notify} onBack={() => setStep(4)} onContinue={continueStep} />}
@@ -334,7 +350,26 @@ function UploadStep({ file, onUpload, onContinue }) {
   const handleFile = e => e.target.files?.[0] && onUpload(e.target.files[0]);
   return <div className="step-content upload-step"><div className="step-title"><span className="step-kicker">STEP 01</span><h2>Upload your Excel file</h2><p>Select an Excel file to start cleaning your data.</p></div>
     {!file ? <>
-      <button className="upload-zone" onClick={() => fileInput.current?.click()}><span className="upload-icon"><Upload size={29} /></span><b>Drop your Excel file here</b><span>or</span><span className="browse-button">Browse files</span><small>.xlsx, .xls and .csv supported</small></button>
+      <button className="upload-zone" onClick={() => fileInput.current?.click()}>
+        <span className="upload-icon"><Upload size={29} /></span>
+        <b>Drop your Excel file here</b><span>or</span>
+        <span className="Documents-btn">
+          <span className="folderContainer">
+            <svg className="fileBack" viewBox="0 0 146 113" fill="#1b6bbb">
+              <path d="M0 16C0 7.163 7.163 0 16 0h40l20 20h54c8.837 0 16 7.163 16 16v77H0z" />
+            </svg>
+            <svg className="filePage" viewBox="0 0 100 120" fill="white">
+              <rect x="0" y="0" width="100" height="120" rx="8" />
+              <path d="M20 30h60M20 50h60M20 70h40" stroke="#1b6bbb" strokeWidth="6" strokeLinecap="round" />
+            </svg>
+            <svg className="fileFront" viewBox="0 0 146 80" fill="#3D9BFC">
+              <path d="M0 0h146v64c0 8.837-7.163 16-16 16H16c-8.837 0-16-7.163-16-16z" />
+            </svg>
+          </span>
+          <span className="text">Browse files</span>
+        </span>
+        <small>.xlsx, .xls and .csv supported</small>
+      </button>
       <input ref={fileInput} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} />
       <button className="demo-link" onClick={() => onUpload()}>Or explore with sample asset data <ArrowRight size={15} /></button>
     </> : <div className="file-ready"><div className="file-ready-icon"><FileSpreadsheet size={28} /></div><div className="file-info"><span><CheckCircle2 size={17} /> File uploaded successfully</span><h3>{file.name}</h3><p>{Number(file.rows).toLocaleString()} rows <i /> {file.columns} columns <i /> {file.sheets} sheets</p></div><button className="icon-button" title="Choose a different file" onClick={() => fileInput.current?.click()}><RefreshCw size={18} /></button><input ref={fileInput} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} /></div>}
@@ -342,21 +377,64 @@ function UploadStep({ file, onUpload, onContinue }) {
   </div>;
 }
 
-function ReviewStep({ rows, sheet, sheets, rowCount, columns, search, setSearch, onSheetChange, onMerge, onEdit, changes, onUndo, onBack, onContinue }) {
+function ReviewStep({ rows, sheet, sheets, rowCount, columns, search, setSearch, onSheetChange, onMerge, onEdit, onTableAction, changes, onUndo, onBack, onContinue }) {
   const [zoom, setZoom] = useState(1);
   return <div className="step-content review-step"><div className="split-step-heading"><div className="step-title"><span className="step-kicker">STEP 02</span><h2>Review your data</h2><p>Double-click a cell to make a quick correction.</p></div><div className="sheet-select"><span>Select sheet</span><label><TableProperties size={16} /><select value={sheet} onChange={e => onSheetChange(e.target.value)}>{sheets.map(name => <option key={name}>{name}</option>)}</select><ChevronDown size={15} /></label></div></div>
     <div className="review-toolbar"><div className="search-box"><Search size={18} /><input aria-label="Search data" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search data..." /></div><button className="toolbar-button" onClick={() => setZoom(z => z + 0.1)}><ZoomIn size={16} /> Zoom In</button><button className="toolbar-button" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))}><ZoomOut size={16} /> Zoom Out</button><button className="toolbar-button"><Filter size={16} /> Filter</button><span className="data-stat">Rows: {Number(rowCount).toLocaleString()} <i /> Columns: {columns.length}</span><button className="undo-button" onClick={onUndo} disabled={!changes.length}><Undo2 size={16} /> Undo last change</button></div>
     <div className="sheet-detail"><b>{sheet}</b><span>{Number(rowCount).toLocaleString()} rows</span><button onClick={onMerge} disabled={sheets.length < 2}><Merge size={15} /> Merge sheets</button></div>
-    <DataTable zoom={zoom} rows={rows} search={search} changes={changes} onEdit={onEdit} />
+    <DataTable zoom={zoom} rows={rows} search={search} changes={changes} onEdit={onEdit} onTableAction={onTableAction} />
     <StepFooter onBack={onBack} onContinue={onContinue} />
   </div>;
 }
 
-function DataTable({ rows, search = '', changes = [], onEdit, compact = false, zoom = 1 }) {
+function DataTable({ rows, search = '', changes = [], onEdit, onTableAction, compact = false, zoom = 1 }) {
   const [editing, setEditing] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
   const [sort, setSort] = useState(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+
+  const handleContextAction = async (action) => {
+    if (!contextMenu) return;
+    const { id, column, value } = contextMenu;
+    const cellValue = String(value || '');
+    
+    try {
+      switch (action) {
+        case 'copy':
+          await navigator.clipboard.writeText(cellValue);
+          break;
+        case 'cut':
+          await navigator.clipboard.writeText(cellValue);
+          onEdit?.(id, column, '');
+          break;
+        case 'paste':
+          const text = await navigator.clipboard.readText();
+          onEdit?.(id, column, text);
+          break;
+        case 'clear':
+          onEdit?.(id, column, '');
+          break;
+        case 'insert':
+          onTableAction?.('INSERT_ROW', { afterId: id });
+          break;
+        case 'delete':
+          onTableAction?.('DELETE_ROW', { id });
+          break;
+        case 'format':
+          setEditing({ id, column, value });
+          break;
+      }
+    } catch(err) {
+       console.error("Context Action failed:", err);
+    }
+  };
   const headers = Object.keys(rows[0] || {}).filter(key => key !== 'id');
   const changed = new Set(changes.map(change => `${change.id}-${change.col}`));
   const tableRows = useMemo(() => {
@@ -368,7 +446,21 @@ function DataTable({ rows, search = '', changes = [], onEdit, compact = false, z
   const totalPages = Math.ceil(tableRows.length / pageSize) || 1;
   const paginatedRows = tableRows.slice((page - 1) * pageSize, page * pageSize);
   const save = async () => { if (!editing) return; const change = editing; setEditing(null); await onEdit?.(change.id, change.column, change.value); };
-  return <div style={{ display: 'flex', flexDirection: 'column' }}><div className={`table-wrap ${compact ? 'compact-table' : ''}`} style={{ zoom }}><table><thead><tr><th className="row-number">#</th>{headers.map(header => <th key={header}><button onClick={() => setSort(sort === header ? '__desc' : header)}>{header}<ChevronDown size={13} /></button></th>)}</tr></thead><tbody>{paginatedRows.map((row, index) => <tr key={row.id}>{<td className="row-number">{(page - 1) * pageSize + index + 1}</td>}{headers.map(column => { const key = `${row.id}-${column}`; const isEditing = editing?.id === row.id && editing?.column === column; return <td key={column} title={row[column] ? String(row[column]) : ''} className={`${changed.has(key) ? 'was-edited' : ''} ${String(row[column]).match(/E\+\d+/) ? 'number-alert' : ''}`} onDoubleClick={() => onEdit && setEditing({ id: row.id, column, value: row[column] })}>{isEditing ? <input autoFocus value={editing.value} onChange={e => setEditing({ ...editing, value: e.target.value })} onBlur={save} onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(null); }} /> : <><span>{row[column] || <em className="empty-cell">Empty</em>}</span>{changed.has(key) && <small>Modified</small>}</>}</td>; })}</tr>)}</tbody></table>{tableRows.length === 0 && <div className="empty-table">No matching data found.</div>}</div><div style={{ display: 'flex', gap: '16px', alignItems: 'center', alignSelf: 'flex-end', marginTop: '12px', fontSize: '13px', color: '#62839e' }}><div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}><span>Rows:</span><select className="toolbar-button" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} style={{ padding: '0 8px', height: '28px', color: 'inherit' }}><option value={50}>50</option><option value={100}>100</option><option value={500}>500</option><option value={rows.length}>All</option></select></div><div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><button className="toolbar-button" disabled={page === 1} onClick={() => setPage(p => p - 1)}><ChevronLeft size={16} /> Prev</button><span>Page {page} of {totalPages}</span><button className="toolbar-button" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next <ChevronRight size={16} /></button></div></div></div>;
+  return <div style={{ display: 'flex', flexDirection: 'column' }}><div className={`table-wrap ${compact ? 'compact-table' : ''}`} style={{ zoom }}><table><thead><tr><th className="row-number">#</th>{headers.map(header => <th key={header}><button onClick={() => setSort(sort === header ? '__desc' : header)}>{header}<ChevronDown size={13} /></button></th>)}</tr></thead><tbody>{paginatedRows.map((row, index) => <tr key={row.id}>{<td className="row-number">{(page - 1) * pageSize + index + 1}</td>}{headers.map(column => { const key = `${row.id}-${column}`; const isEditing = editing?.id === row.id && editing?.column === column; return <td key={column} title={row[column] ? String(row[column]) : ''} className={`${changed.has(key) ? 'was-edited' : ''} ${String(row[column]).match(/E\+\d+/) ? 'number-alert' : ''}`} onDoubleClick={() => onEdit && setEditing({ id: row.id, column, value: row[column] })} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, id: row.id, column, value: row[column] }); }}>{isEditing ? <input autoFocus value={editing.value} onChange={e => setEditing({ ...editing, value: e.target.value })} onBlur={save} onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(null); }} /> : <><span>{row[column] || <em className="empty-cell">Empty</em>}</span>{changed.has(key) && <small>Modified</small>}</>}</td>; })}</tr>)}</tbody></table>{tableRows.length === 0 && <div className="empty-table">No matching data found.</div>}
+  {contextMenu && (
+    <div className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(e) => e.stopPropagation()}>
+      <div className="context-menu-item" onClick={() => handleContextAction('cut')}><Scissors /> Cut</div>
+      <div className="context-menu-item" onClick={() => handleContextAction('copy')}><Copy /> Copy</div>
+      <div className="context-menu-item" onClick={() => handleContextAction('paste')}><ClipboardPaste /> Paste / Paste Special</div>
+      <div className="context-menu-divider" />
+      <div className="context-menu-item" onClick={() => handleContextAction('insert')}><ArrowDownToLine /> Insert</div>
+      <div className="context-menu-item" onClick={() => handleContextAction('delete')}><Trash2 /> Delete</div>
+      <div className="context-menu-item" onClick={() => handleContextAction('clear')}><Eraser /> Clear Contents</div>
+      <div className="context-menu-divider" />
+      <div className="context-menu-item" onClick={() => handleContextAction('format')}><Paintbrush /> Format Cells</div>
+    </div>
+  )}
+  </div><div style={{ display: 'flex', gap: '16px', alignItems: 'center', alignSelf: 'flex-end', marginTop: '12px', fontSize: '13px', color: '#62839e' }}><div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}><span>Rows:</span><select className="toolbar-button" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} style={{ padding: '0 8px', height: '28px', color: 'inherit' }}><option value={50}>50</option><option value={100}>100</option><option value={500}>500</option><option value={rows.length}>All</option></select></div><div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><button className="toolbar-button" disabled={page === 1} onClick={() => setPage(p => p - 1)}><ChevronLeft size={16} /> Prev</button><span>Page {page} of {totalPages}</span><button className="toolbar-button" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next <ChevronRight size={16} /></button></div></div></div>;
 }
 
 function CleanStep({ rows, columns, issues, serverSession, activeTool, setActiveTool, notify, ask, onDataChanged, onRefreshIssues, onBack, onContinue }) {
@@ -568,7 +660,7 @@ function ValidateStep({ rows, recordCount, serverSession, finalReady, setFinalRe
       <span className={passed ? 'valid' : 'needs-review'}>{passed ? <Check size={16} /> : <AlertTriangle size={16} />}</span>
       <div><b>{name}</b><small>{text}</small></div><span className={passed ? 'result good' : 'result caution'}>{passed ? 'Passed' : 'Needs review'}</span>
     </div>)}</div>
-    <div className="final-preview-intro"><div><span className="eyebrow muted">FINAL DATA PREVIEW</span><h3>Ready when you are</h3><p>{Number(recordCount).toLocaleString()} records · {validation?.columns_kept?.count || 12} columns</p></div><button className="button button-primary" disabled={!ready} onClick={continueToExport}>Continue to export <ArrowRight size={17} /></button></div>
+    <div className="final-preview-intro"><div><span className="eyebrow muted">FINAL DATA PREVIEW</span><h3>Ready when you are</h3><p>{Number(recordCount).toLocaleString()} records · {validation?.columns_kept?.count || 12} columns</p></div><button className="uiverse-continue-btn" disabled={!ready} onClick={continueToExport}><div className="btn-arrow-bg"><ArrowRight size={17} color="white" /></div><p className="btn-text-content">Continue to export</p></button></div>
     {finalReady && <DataTable rows={rows.slice(0, 4)} compact />}
     <StepFooter onBack={onBack} canContinue={ready} onContinue={continueToExport} />
   </div>;
@@ -596,7 +688,7 @@ function ExportStep({ rows, columns, serverSession, notify, askFormat, onRestart
   return <div className="step-content export-step"><div className="export-hero"><span className="export-check"><Check size={34} /></span><span className="step-kicker">STEP 06 · ALL SET</span><h2>Your data is ready</h2><p>Your cleaned file is prepared with exactly the selected columns.</p><div className="export-stats"><div><b>{rows.length.toLocaleString()}</b><span>records shown</span></div><div><b>{columns.length}</b><span>columns</span></div><div><b>0</b><span>unresolved critical errors</span></div></div><button className="button button-primary button-large" onClick={download}><Download size={20} /> Download Data</button><small>Ready to save to your device safely</small></div><div className="export-bottom"><Info size={17} /> Your data is processed locally. Start a new task when you are done to clear this session.<button className="text-button" onClick={onRestart}>Start new task <ArrowRight size={15} /></button></div></div>;
 }
 
-function StepFooter({ onBack, onContinue, canContinue = true }) { return <div className="step-footer">{onBack ? <button className="button button-secondary" onClick={onBack}><ArrowLeft size={17} /> Back</button> : <span /> }<button className="button button-primary" disabled={!canContinue} onClick={onContinue}>Continue <ArrowRight size={17} /></button></div>; }
+function StepFooter({ onBack, onContinue, canContinue = true }) { return <div className="step-footer">{onBack ? <button className="button button-secondary" onClick={onBack}><ArrowLeft size={17} /> Back</button> : <span /> }<button className="uiverse-continue-btn" disabled={!canContinue} onClick={onContinue}><div className="btn-arrow-bg"><ArrowRight size={17} color="white" /></div><p className="btn-text-content">Continue</p></button></div>; }
 
 function LegacyCompareExcel({ notify, ask, askFormat }) {
   const firstRef = useRef(null), secondRef = useRef(null);
@@ -709,7 +801,7 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
   </section>;
 }
 
-function CompareUpload({ title, file, inputRef, onClick, onChange }) { return <div className={`compare-upload ${file ? 'uploaded' : ''}`}><input ref={inputRef} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={onChange} /><span className="compare-file-icon"><FileSpreadsheet size={23} /></span><span className="compare-label">{title}</span>{file ? <><b>{file.name}</b><small>{file.rows} rows</small><button className="text-button" onClick={onClick}>Change file</button></> : <><p>Choose an Excel or CSV file to compare.</p><button className="button button-secondary" onClick={onClick}><Upload size={16} /> Upload File</button></>}</div>; }
+function CompareUpload({ title, file, inputRef, onClick, onChange }) { return <div className={`compare-upload ${file ? 'uploaded' : ''}`}><input ref={inputRef} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={onChange} /><span className="compare-file-icon"><FileSpreadsheet size={23} /></span><span className="compare-label">{title}</span>{file ? <><b>{file.name}</b><small>{file.rows} rows</small><button className="text-button" onClick={onClick}>Change file</button></> : <><p>Choose an Excel or CSV file to compare.</p><button className="uiverse-upload-btn" onClick={onClick}><Upload size={16} /> Upload File</button></>}</div>; }
 function ResultCount({ label, count, blue, green }) { return <div className={`result-count ${blue ? 'blue' : ''} ${green ? 'green' : ''}`}><span>{label}</span><b>{count}</b></div>; }
 
 function SettingsPage({ notify }) { const [checked, setChecked] = useState(true); return <section className="page settings-page"><PageIntro eyebrow="SETTINGS" title="Your preferences" text="These settings apply only on this device." /><div className="settings-card"><div><span className="setting-icon"><ShieldCheck /></span><div><h3>Protect your privacy</h3><p>Clear temporary files when you start a new task or close the app.</p></div></div><button className={`switch ${checked ? 'on' : ''}`} aria-label="Clear files on close" onClick={() => { setChecked(!checked); notify(`Temporary-file cleanup ${!checked ? 'enabled' : 'disabled'}`, 'info'); }}><span /></button></div><div className="settings-card"><div><span className="setting-icon"><FolderOpen /></span><div><h3>Download location</h3><p>Each export will ask where you want to save the CSV file.</p></div></div><button className="button button-secondary" onClick={() => notify('Your system will choose the download location', 'info')}>Change</button></div></section>; }
