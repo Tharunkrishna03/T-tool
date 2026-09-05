@@ -25,10 +25,7 @@ app.add_middleware(
     # Vite starts at 5173 and selects the next available port in development.
     # Keep the browser API access limited to loopback origins.
     allow_origins=[
-        "http://localhost:5173", "http://127.0.0.1:5173",
-        "http://localhost:5174", "http://127.0.0.1:5174",
-        "http://localhost:5175", "http://127.0.0.1:5175",
-        "null",
+        "*"
     ],
     allow_methods=["*"],
     allow_headers=["*"],
