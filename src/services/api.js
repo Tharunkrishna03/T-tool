@@ -27,6 +27,7 @@ export const api = {
   validate: async () => (await client.post('/validate')).data,
   preview: async () => (await client.post('/preview')).data,
   exportCsv: async () => (await client.post('/export-csv', null, { responseType: 'blob' })).data,
+  exportXl: async () => (await client.post('/export-xl', null, { responseType: 'blob' })).data,
   compareFields: async (first, second) => {
     const body = new FormData();
     body.append('first', first); body.append('second', second);

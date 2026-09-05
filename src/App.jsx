@@ -549,18 +549,25 @@ function ValidateStep({ rows, recordCount, serverSession, finalReady, setFinalRe
 
 function ExportStep({ rows, columns, serverSession, notify, onRestart }) {
   const download = async () => {
+    const format = window.prompt('Enter download format (csv or xl):', 'csv');
+    if (!format) return;
+
     if (serverSession) {
       try {
-        const data = await api.exportCsv();
-        const url = URL.createObjectURL(data); const link = document.createElement('a'); link.href = url; link.download = 'Cleaned_Asset_Data.csv'; link.click();
+        const isXl = format.toLowerCase() === 'xl' || format.toLowerCase() === 'xlsx';
+        const data = isXl ? await api.exportXl() : await api.exportCsv();
+        const extension = isXl ? 'xlsx' : 'csv';
+        const url = URL.createObjectURL(data); const link = document.createElement('a'); link.href = url; link.download = `Cleaned_Asset_Data.${extension}`; link.click();
         window.setTimeout(() => URL.revokeObjectURL(url), 0);
-        notify('Your CSV download has started');
-      } catch (error) { notify(errorMessage(error, 'Could not export the cleaned CSV.'), 'warning'); }
+        notify(`Your ${extension.toUpperCase()} download has started`);
+      } catch (error) { notify(errorMessage(error, 'Could not export the cleaned data.'), 'warning'); }
       return;
     }
+    
+    // Using sample data
     exportData(rows, 'Cleaned_Data', notify);
   };
-  return <div className="step-content export-step"><div className="export-hero"><span className="export-check"><Check size={34} /></span><span className="step-kicker">STEP 06 · ALL SET</span><h2>Your data is ready</h2><p>Your cleaned file is prepared with exactly the selected columns.</p><div className="export-stats"><div><b>{rows.length.toLocaleString()}</b><span>records shown</span></div><div><b>{columns.length}</b><span>columns</span></div><div><b>0</b><span>unresolved critical errors</span></div></div><button className="button button-primary button-large" onClick={download}><Download size={20} /> Download CSV</button><small>Saved as <b>Cleaned_Data.csv</b> with UTF-8 encoding</small></div><div className="export-bottom"><Info size={17} /> Your data is processed locally. Start a new task when you are done to clear this session.<button className="text-button" onClick={onRestart}>Start new task <ArrowRight size={15} /></button></div></div>;
+  return <div className="step-content export-step"><div className="export-hero"><span className="export-check"><Check size={34} /></span><span className="step-kicker">STEP 06 · ALL SET</span><h2>Your data is ready</h2><p>Your cleaned file is prepared with exactly the selected columns.</p><div className="export-stats"><div><b>{rows.length.toLocaleString()}</b><span>records shown</span></div><div><b>{columns.length}</b><span>columns</span></div><div><b>0</b><span>unresolved critical errors</span></div></div><button className="button button-primary button-large" onClick={download}><Download size={20} /> Download Data</button><small>Ready to save to your device safely</small></div><div className="export-bottom"><Info size={17} /> Your data is processed locally. Start a new task when you are done to clear this session.<button className="text-button" onClick={onRestart}>Start new task <ArrowRight size={15} /></button></div></div>;
 }
 
 function StepFooter({ onBack, onContinue, canContinue = true }) { return <div className="step-footer">{onBack ? <button className="button button-secondary" onClick={onBack}><ArrowLeft size={17} /> Back</button> : <span /> }<button className="button button-primary" disabled={!canContinue} onClick={onContinue}>Continue <ArrowRight size={17} /></button></div>; }

@@ -430,6 +430,16 @@ def export_csv() -> StreamingResponse:
     csv = frame.to_csv(index=False, encoding="utf-8-sig")
     return StreamingResponse(iter([csv.encode("utf-8-sig")]), media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="Cleaned_Asset_Data.csv"'})
 
+@app.post("/api/export-xl")
+def export_xl() -> StreamingResponse:
+    frame = require_data()
+    import io
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        frame.to_excel(writer, index=False)
+    output.seek(0)
+    return StreamingResponse(iter([output.read()]), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": 'attachment; filename="Cleaned_Asset_Data.xlsx"'})
+
 
 @app.post("/api/reset")
 def reset() -> dict[str, str]:
