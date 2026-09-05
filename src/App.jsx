@@ -52,6 +52,28 @@ function downloadRows(rows, fileName) {
   return true;
 }
 
+export function exportData(rows, fileNameBase, notify) {
+  const format = window.prompt('Enter download format (csv or xl):', 'csv');
+  if (!format) return;
+  if (!rows || !rows.length) return;
+  
+  if (format.toLowerCase() === 'xl' || format.toLowerCase() === 'xlsx') {
+    const fields = Object.keys(rows[0] || {});
+    let html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body><table>';
+    html += '<tr>' + fields.map(f => `<th>${f}</th>`).join('') + '</tr>';
+    rows.forEach(row => { html += '<tr>' + fields.map(f => `<td>${row[f] ?? ''}</td>`).join('') + '</tr>'; });
+    html += '</table></body></html>';
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a'); link.href = url; link.download = `${fileNameBase}.xls`; link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    if (notify) notify(`${fileNameBase} XL download started`);
+  } else {
+    downloadRows(rows, `${fileNameBase}.csv`);
+    if (notify) notify(`${fileNameBase} CSV download started`);
+  }
+}
+
 function App() {
   const [page, setPage] = useState('dashboard');
   const [toast, setToast] = useState(null);
@@ -536,9 +558,7 @@ function ExportStep({ rows, columns, serverSession, notify, onRestart }) {
       } catch (error) { notify(errorMessage(error, 'Could not export the cleaned CSV.'), 'warning'); }
       return;
     }
-    const fields = columns;
-    const escape = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
-    if (downloadRows(rows, 'Cleaned_Data.csv')) notify('Your CSV download has started');
+    exportData(rows, 'Cleaned_Data', notify);
   };
   return <div className="step-content export-step"><div className="export-hero"><span className="export-check"><Check size={34} /></span><span className="step-kicker">STEP 06 · ALL SET</span><h2>Your data is ready</h2><p>Your cleaned file is prepared with exactly the selected columns.</p><div className="export-stats"><div><b>{rows.length.toLocaleString()}</b><span>records shown</span></div><div><b>{columns.length}</b><span>columns</span></div><div><b>0</b><span>unresolved critical errors</span></div></div><button className="button button-primary button-large" onClick={download}><Download size={20} /> Download CSV</button><small>Saved as <b>Cleaned_Data.csv</b> with UTF-8 encoding</small></div><div className="export-bottom"><Info size={17} /> Your data is processed locally. Start a new task when you are done to clear this session.<button className="text-button" onClick={onRestart}>Start new task <ArrowRight size={15} /></button></div></div>;
 }
@@ -553,7 +573,7 @@ function LegacyCompareExcel({ notify, ask }) {
   const setFile = (side, item) => { setFiles(old => ({ ...old, [side]: { name: item?.name || (side === 'first' ? 'Asset_List_August.xlsx' : 'Asset_List_September.xlsx'), rows: side === 'first' ? '5,000' : '5,250' } })); notify(`${side === 'first' ? 'First' : 'Second'} Excel file uploaded`); };
   const bothFiles = files.first && files.second;
   const compare = () => { setCompared(true); notify('Comparison complete'); };
-  const downloadNew = () => { const csv = 'Asset Name,Serial Number,Asset ID\nMacBook Pro,9.87654E+13,AST-1007\nConference Table,GD-CT-912,AST-1008'; const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = 'New_Records.csv'; link.click(); URL.revokeObjectURL(link.href); notify('New records CSV download started'); };
+  const downloadNew = () => { const mockRows = [{ 'Asset Name': 'MacBook Pro', 'Serial Number': '9.87654E+13', 'Asset ID': 'AST-1007' }, { 'Asset Name': 'Conference Table', 'Serial Number': 'GD-CT-912', 'Asset ID': 'AST-1008' }]; exportData(mockRows, 'New_Records', notify); };
   return <section className="page compare-page"><PageIntro eyebrow="COMPARE EXCEL" title="Compare Excel files" text="Find what is new, missing, or common across two files." />
     <div className="compare-card">
       <div className="compare-upload-grid"><CompareUpload title="First Excel file" file={files.first} inputRef={firstRef} onClick={() => firstRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('first', event.target.files[0])} /><div className="vs-badge">VS</div><CompareUpload title="Second Excel file" file={files.second} inputRef={secondRef} onClick={() => secondRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('second', event.target.files[0])} /></div>
@@ -629,7 +649,7 @@ function CompareExcel({ notify, sharedFile, setSharedFile }) {
   };
   const downloadNew = () => {
     const exportRows = records.second.map(({ id, ...row }) => row);
-    if (downloadRows(exportRows, 'New_Records.csv')) notify('New records CSV download started');
+    if (exportRows.length > 0) exportData(exportRows, 'New_Records', notify);
     else notify('There are no new records to export.', 'info');
   };
 
@@ -696,25 +716,8 @@ function MergeExcel({ notify, sharedFile, setSharedFile }) {
     }
   };
   const downloadNew = () => {
-    const format = window.prompt('Enter download format (csv or xl):', 'csv');
-    if (!format) return;
-    
     const dataToExport = mergedData || sampleRows;
-    if (format.toLowerCase() === 'xl' || format.toLowerCase() === 'xlsx') {
-      const fields = Object.keys(dataToExport[0] || {});
-      let html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body><table>';
-      html += '<tr>' + fields.map(f => `<th>${f}</th>`).join('') + '</tr>';
-      dataToExport.forEach(row => { html += '<tr>' + fields.map(f => `<td>${row[f] ?? ''}</td>`).join('') + '</tr>'; });
-      html += '</table></body></html>';
-      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a'); link.href = url; link.download = 'Merged_Data.xls'; link.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 0);
-      notify('Merged records XL download started');
-    } else {
-      downloadRows(dataToExport, 'Merged_Data.csv');
-      notify('Merged records CSV download started');
-    }
+    exportData(dataToExport, 'Merged_Data', notify);
   };
 
   return <section className="page compare-page"><PageIntro eyebrow="MERGE EXCEL" title="Merge Data" text="Seamlessly append the records of two different datasets." />
@@ -737,6 +740,10 @@ function StandaloneArrange({ notify, setSharedFile, setPage }) {
     setFile({ name: uploaded.name, raw: uploaded, size: `${(uploaded.size / 1024).toFixed(0)} KB`, rows: 'Processing', columns: 12, sheets: 1 });
     setMapping(defaultMapping(sourceColumns));
     notify('Excel loaded for arrangement');
+  };
+
+  const triggerDownload = () => {
+    exportData(sampleRows, 'Arranged_Data', notify);
   };
 
   const passFileTo = (targetModule) => {
@@ -762,8 +769,7 @@ function StandaloneArrange({ notify, setSharedFile, setPage }) {
     <div className="workflow-card">
       <ArrangeStep mapping={mapping} setMapping={setMapping} file={file} columns={columns} confidence={confidence} setConfidence={setConfidence} serverSession={false} notify={notify} onBack={() => setFile(null)} onContinue={() => {}} />
       <div className="step-footer" style={{ borderTop: 0, paddingTop: 0, justifyContent: 'flex-start', paddingLeft: '40px', paddingRight: '40px', gap: '8px' }}>
-        <button className="button button-secondary" onClick={() => notify('CSV downloaded successfully')}><Download size={16} /> Download CSV</button>
-        <button className="button button-secondary" onClick={() => notify('Excel file (.xlsx) downloaded successfully')}><Download size={16} /> Download .XLSX</button>
+        <button className="button button-secondary" onClick={triggerDownload}><Download size={16} /> Download Data</button>
         <span style={{ margin: '0 auto' }} />
         <span style={{ fontSize: '13px', fontWeight: 600, color: '#456a88' }}>Pass processed file to:</span>
         <select style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #dce9f3', background: 'white' }} onChange={(e) => { if (e.target.value) passFileTo(e.target.value); }}>
