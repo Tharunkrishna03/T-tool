@@ -686,7 +686,19 @@ function MergeExcel({ notify, sharedFile, setSharedFile }) {
     notify('Merge operation complete');
   };
   const downloadNew = () => {
-    notify('Merged records CSV download started');
+    const format = window.prompt('Enter download format (csv or xl):', 'csv');
+    if (!format) return;
+    
+    if (format.toLowerCase() === 'xl' || format.toLowerCase() === 'xlsx') {
+      const blob = new Blob(['Mock Excel data...'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a'); link.href = url; link.download = 'Merged_Data.xlsx'; link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      notify('Merged records XL download started');
+    } else {
+      downloadRows(sampleRows, 'Merged_Data.csv');
+      notify('Merged records CSV download started');
+    }
   };
 
   return <section className="page compare-page"><PageIntro eyebrow="MERGE EXCEL" title="Merge Data" text="Seamlessly append the records of two different datasets." />
