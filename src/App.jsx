@@ -52,8 +52,7 @@ function downloadRows(rows, fileName) {
   return true;
 }
 
-export function exportData(rows, fileNameBase, notify) {
-  const format = window.prompt('Enter download format (csv or xl):', 'csv');
+export function executeExport(rows, fileNameBase, notify, format) {
   if (!format) return;
   if (!rows || !rows.length) return;
   
@@ -74,10 +73,33 @@ export function exportData(rows, fileNameBase, notify) {
   }
 }
 
+function FormatDialog({ onConfirm, onClose }) {
+  const [format, setFormat] = useState('csv');
+  const run = () => { onConfirm?.(format); onClose(); };
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div className="confirm-dialog" role="dialog" aria-modal="true" style={{ width: '400px' }}>
+        <span className="confirm-icon" style={{ background: '#ecfdf5', color: '#10b981' }}><Download size={24} /></span>
+        <h2>Choose file format</h2>
+        <p>Select the preferred file type before downloading your data.</p>
+        <div className="choice-row" style={{ justifyContent: 'center', marginTop: '20px', marginBottom: '20px', gap: '30px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}><input type="radio" checked={format === 'csv'} onChange={() => setFormat('csv')} />CSV (.csv)</label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}><input type="radio" checked={format === 'xl'} onChange={() => setFormat('xl')} />Excel (.xlsx)</label>
+        </div>
+        <div>
+          <button className="button button-secondary" onClick={onClose}>Cancel</button>
+          <button className="button button-primary" onClick={run}>Download</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [page, setPage] = useState('dashboard');
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState(null);
+  const [formatTask, setFormatTask] = useState(null);
   const [sharedFile, setSharedFile] = useState(null);
 
   const notify = (message, type = 'success') => {
@@ -86,19 +108,24 @@ function App() {
     window.__cleanerToast = window.setTimeout(() => setToast(null), 3600);
   };
 
+  const askFormat = (callback) => {
+    setFormatTask(() => callback);
+  };
+
   return (
     <div className="app-shell">
       <Sidebar page={page} setPage={setPage} />
       <main className="main-panel">
         {page === 'dashboard' && <Dashboard setPage={setPage} />}
-        {page === 'clean' && <CleanExcel notify={notify} ask={setModal} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
-        {page === 'compare' && <CompareExcel notify={notify} ask={setModal} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
-        {page === 'merge' && <MergeExcel notify={notify} ask={setModal} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
-        {page === 'arrange' && <StandaloneArrange notify={notify} setSharedFile={setSharedFile} setPage={setPage} />}
+        {page === 'clean' && <CleanExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
+        {page === 'compare' && <CompareExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
+        {page === 'merge' && <MergeExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
+        {page === 'arrange' && <StandaloneArrange notify={notify} askFormat={askFormat} setSharedFile={setSharedFile} setPage={setPage} />}
         {page === 'settings' && <SettingsPage notify={notify} />}
       </main>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       {modal && <ConfirmDialog {...modal} onClose={() => setModal(null)} />}
+      {formatTask && <FormatDialog onConfirm={formatTask} onClose={() => setFormatTask(null)} />}
     </div>
   );
 }
@@ -149,7 +176,7 @@ function ActionCard({ variant, icon, title, text, action, onClick }) {
   return <article className={`action-card ${variant}`}><div className="card-icon">{icon}</div><div className="action-content"><h2>{title}</h2><p>{text}</p></div><button className={`button ${variant === 'blue' ? 'button-white' : 'button-primary'}`} onClick={onClick}>{action}<ArrowRight size={18} /></button><div className="card-pattern" /></article>;
 }
 
-function CleanExcel({ notify, ask, sharedFile, setSharedFile }) {
+function CleanExcel({ notify, ask, askFormat, sharedFile, setSharedFile }) {
   const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
   const [sheet, setSheet] = useState('Asset Data');
@@ -288,7 +315,7 @@ function CleanExcel({ notify, ask, sharedFile, setSharedFile }) {
       {step === 3 && <CleanStep rows={rows} columns={columns} issues={issues} serverSession={serverSession} activeTool={activeTool} setActiveTool={setActiveTool} notify={notify} ask={showConfirm} onDataChanged={refreshPreview} onRefreshIssues={refreshIssues} onBack={() => setStep(2)} onContinue={continueStep} />}
       {step === 4 && <ArrangeStep mapping={mapping} setMapping={setMapping} file={file} columns={columns} confidence={mappingConfidence} setConfidence={setMappingConfidence} serverSession={serverSession} notify={notify} onBack={() => setStep(3)} onContinue={applyMapping} />}
       {step === 5 && <ValidateStep rows={rows} recordCount={recordCount} serverSession={serverSession} finalReady={finalReady} setFinalReady={setFinalReady} notify={notify} onBack={() => setStep(4)} onContinue={continueStep} />}
-      {step === 6 && <ExportStep rows={rows} columns={columns} serverSession={serverSession} notify={notify} onRestart={restart} />}
+      {step === 6 && <ExportStep rows={rows} columns={columns} serverSession={serverSession} notify={notify} askFormat={askFormat} onRestart={restart} />}
     </div>
   </section>;
 }
@@ -547,32 +574,31 @@ function ValidateStep({ rows, recordCount, serverSession, finalReady, setFinalRe
   </div>;
 }
 
-function ExportStep({ rows, columns, serverSession, notify, onRestart }) {
+function ExportStep({ rows, columns, serverSession, notify, askFormat, onRestart }) {
   const download = async () => {
-    const format = window.prompt('Enter download format (csv or xl):', 'csv');
-    if (!format) return;
-
-    if (serverSession) {
-      try {
-        const isXl = format.toLowerCase() === 'xl' || format.toLowerCase() === 'xlsx';
-        const data = isXl ? await api.exportXl() : await api.exportCsv();
-        const extension = isXl ? 'xlsx' : 'csv';
-        const url = URL.createObjectURL(data); const link = document.createElement('a'); link.href = url; link.download = `Cleaned_Asset_Data.${extension}`; link.click();
-        window.setTimeout(() => URL.revokeObjectURL(url), 0);
-        notify(`Your ${extension.toUpperCase()} download has started`);
-      } catch (error) { notify(errorMessage(error, 'Could not export the cleaned data.'), 'warning'); }
-      return;
-    }
-    
-    // Using sample data
-    exportData(rows, 'Cleaned_Data', notify);
+    askFormat(async (format) => {
+      if (serverSession) {
+        try {
+          const isXl = format.toLowerCase() === 'xl' || format.toLowerCase() === 'xlsx';
+          const data = isXl ? await api.exportXl() : await api.exportCsv();
+          const extension = isXl ? 'xlsx' : 'csv';
+          const url = URL.createObjectURL(data); const link = document.createElement('a'); link.href = url; link.download = `Cleaned_Asset_Data.${extension}`; link.click();
+          window.setTimeout(() => URL.revokeObjectURL(url), 0);
+          notify(`Your ${extension.toUpperCase()} download has started`);
+        } catch (error) { notify(errorMessage(error, 'Could not export the cleaned data.'), 'warning'); }
+        return;
+      }
+      
+      // Using sample data
+      executeExport(rows, 'Cleaned_Data', notify, format);
+    });
   };
   return <div className="step-content export-step"><div className="export-hero"><span className="export-check"><Check size={34} /></span><span className="step-kicker">STEP 06 · ALL SET</span><h2>Your data is ready</h2><p>Your cleaned file is prepared with exactly the selected columns.</p><div className="export-stats"><div><b>{rows.length.toLocaleString()}</b><span>records shown</span></div><div><b>{columns.length}</b><span>columns</span></div><div><b>0</b><span>unresolved critical errors</span></div></div><button className="button button-primary button-large" onClick={download}><Download size={20} /> Download Data</button><small>Ready to save to your device safely</small></div><div className="export-bottom"><Info size={17} /> Your data is processed locally. Start a new task when you are done to clear this session.<button className="text-button" onClick={onRestart}>Start new task <ArrowRight size={15} /></button></div></div>;
 }
 
 function StepFooter({ onBack, onContinue, canContinue = true }) { return <div className="step-footer">{onBack ? <button className="button button-secondary" onClick={onBack}><ArrowLeft size={17} /> Back</button> : <span /> }<button className="button button-primary" disabled={!canContinue} onClick={onContinue}>Continue <ArrowRight size={17} /></button></div>; }
 
-function LegacyCompareExcel({ notify, ask }) {
+function LegacyCompareExcel({ notify, ask, askFormat }) {
   const firstRef = useRef(null), secondRef = useRef(null);
   const [files, setFiles] = useState({ first: null, second: null });
   const [compared, setCompared] = useState(false);
@@ -580,7 +606,10 @@ function LegacyCompareExcel({ notify, ask }) {
   const setFile = (side, item) => { setFiles(old => ({ ...old, [side]: { name: item?.name || (side === 'first' ? 'Asset_List_August.xlsx' : 'Asset_List_September.xlsx'), rows: side === 'first' ? '5,000' : '5,250' } })); notify(`${side === 'first' ? 'First' : 'Second'} Excel file uploaded`); };
   const bothFiles = files.first && files.second;
   const compare = () => { setCompared(true); notify('Comparison complete'); };
-  const downloadNew = () => { const mockRows = [{ 'Asset Name': 'MacBook Pro', 'Serial Number': '9.87654E+13', 'Asset ID': 'AST-1007' }, { 'Asset Name': 'Conference Table', 'Serial Number': 'GD-CT-912', 'Asset ID': 'AST-1008' }]; exportData(mockRows, 'New_Records', notify); };
+  const downloadNew = () => { 
+    const mockRows = [{ 'Asset Name': 'MacBook Pro', 'Serial Number': '9.87654E+13', 'Asset ID': 'AST-1007' }, { 'Asset Name': 'Conference Table', 'Serial Number': 'GD-CT-912', 'Asset ID': 'AST-1008' }]; 
+    askFormat((format) => executeExport(mockRows, 'New_Records', notify, format)); 
+  };
   return <section className="page compare-page"><PageIntro eyebrow="COMPARE EXCEL" title="Compare Excel files" text="Find what is new, missing, or common across two files." />
     <div className="compare-card">
       <div className="compare-upload-grid"><CompareUpload title="First Excel file" file={files.first} inputRef={firstRef} onClick={() => firstRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('first', event.target.files[0])} /><div className="vs-badge">VS</div><CompareUpload title="Second Excel file" file={files.second} inputRef={secondRef} onClick={() => secondRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('second', event.target.files[0])} /></div>
@@ -591,7 +620,7 @@ function LegacyCompareExcel({ notify, ask }) {
   </section>;
 }
 
-function CompareExcel({ notify, sharedFile, setSharedFile }) {
+function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
   const firstRef = useRef(null), secondRef = useRef(null);
   const [files, setFiles] = useState({ first: null, second: null });
   const [fields, setFields] = useState([]);
@@ -656,7 +685,7 @@ function CompareExcel({ notify, sharedFile, setSharedFile }) {
   };
   const downloadNew = () => {
     const exportRows = records.second.map(({ id, ...row }) => row);
-    if (exportRows.length > 0) exportData(exportRows, 'New_Records', notify);
+    if (exportRows.length > 0) askFormat((format) => executeExport(exportRows, 'New_Records', notify, format));
     else notify('There are no new records to export.', 'info');
   };
 
@@ -689,7 +718,7 @@ function Toast({ message, type, onClose }) { const Icon = type === 'success' ? C
 
 function ConfirmDialog({ title, message, confirm = 'Continue', onConfirm, onClose }) { const run = () => { onConfirm?.(); onClose(); }; return <div className="modal-backdrop" role="presentation"><div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title"><span className="confirm-icon"><AlertTriangle size={24} /></span><h2 id="confirm-title">{title}</h2><p>{message}</p><div><button className="button button-secondary" onClick={onClose}>Cancel</button><button className="button button-primary" onClick={run}>{confirm}</button></div></div></div>; }
 
-function MergeExcel({ notify, sharedFile, setSharedFile }) {
+function MergeExcel({ notify, askFormat, sharedFile, setSharedFile }) {
   const firstRef = useRef(null), secondRef = useRef(null);
   const [files, setFiles] = useState({ first: null, second: null });
   const [mergedData, setMergedData] = useState(null);
@@ -724,7 +753,7 @@ function MergeExcel({ notify, sharedFile, setSharedFile }) {
   };
   const downloadNew = () => {
     const dataToExport = mergedData || sampleRows;
-    exportData(dataToExport, 'Merged_Data', notify);
+    askFormat((format) => executeExport(dataToExport, 'Merged_Data', notify, format));
   };
 
   return <section className="page compare-page"><PageIntro eyebrow="MERGE EXCEL" title="Merge Data" text="Seamlessly append the records of two different datasets." />
@@ -736,7 +765,7 @@ function MergeExcel({ notify, sharedFile, setSharedFile }) {
   </section>;
 }
 
-function StandaloneArrange({ notify, setSharedFile, setPage }) {
+function StandaloneArrange({ notify, askFormat, setSharedFile, setPage }) {
   const [file, setFile] = useState(null);
   const [mapping, setMapping] = useState([]);
   const [columns, setColumns] = useState(sourceColumns);
@@ -750,7 +779,7 @@ function StandaloneArrange({ notify, setSharedFile, setPage }) {
   };
 
   const triggerDownload = () => {
-    exportData(sampleRows, 'Arranged_Data', notify);
+    askFormat((format) => executeExport(sampleRows, 'Arranged_Data', notify, format));
   };
 
   const passFileTo = (targetModule) => {
