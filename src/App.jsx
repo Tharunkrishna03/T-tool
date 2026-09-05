@@ -766,13 +766,19 @@ function MergeExcel({ notify, askFormat, sharedFile, setSharedFile }) {
 }
 
 function StandaloneArrange({ notify, askFormat, setSharedFile, setPage }) {
+  const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
   const [mapping, setMapping] = useState([]);
   const [columns, setColumns] = useState(sourceColumns);
   const [confidence, setConfidence] = useState({});
 
   const uploadDone = (uploaded) => {
-    if (!uploaded) return setFile(null);
+    if (!uploaded) {
+       setFile({ name: 'Sample_Asset_Data.xlsx', size: '1.8 MB', rows: 5000, columns: 12, sheets: 3 });
+       setMapping(defaultMapping(sourceColumns));
+       notify('Sample data loaded for arrangement', 'info');
+       return;
+    }
     setFile({ name: uploaded.name, raw: uploaded, size: `${(uploaded.size / 1024).toFixed(0)} KB`, rows: 'Processing', columns: 12, sheets: 1 });
     setMapping(defaultMapping(sourceColumns));
     notify('Excel loaded for arrangement');
@@ -783,7 +789,6 @@ function StandaloneArrange({ notify, askFormat, setSharedFile, setPage }) {
   };
 
   const passFileTo = (targetModule) => {
-    // Generate a dummy blob to simulate the newly mapped structure 
     const outputFileName = `Arranged_${file?.name || 'Data.xlsx'}`;
     const blob = new Blob(['Mock data structure...'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const outboundFile = new File([blob], outputFileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -793,28 +798,24 @@ function StandaloneArrange({ notify, askFormat, setSharedFile, setPage }) {
     setPage(targetModule);
   };
 
-  if (!file) {
-    return <section className="page workflow-page">
-      <PageIntro eyebrow="ARRANGE EXCEL" title="Arrange Data" text="Reorder and map columns dynamically manually." />
-      <div className="workflow-card"><UploadStep file={file} onUpload={uploadDone} onContinue={() => {}} /></div>
-    </section>;
-  }
-
   return <section className="page workflow-page">
     <PageIntro eyebrow="ARRANGE EXCEL" title="Arrange Data" text="Reorder and map columns dynamically manually." />
     <div className="workflow-card">
-      <ArrangeStep mapping={mapping} setMapping={setMapping} file={file} columns={columns} confidence={confidence} setConfidence={setConfidence} serverSession={false} notify={notify} onBack={() => setFile(null)} onContinue={() => {}} />
-      <div className="step-footer" style={{ borderTop: 0, paddingTop: 0, justifyContent: 'flex-start', paddingLeft: '40px', paddingRight: '40px', gap: '8px' }}>
-        <button className="button button-secondary" onClick={triggerDownload}><Download size={16} /> Download Data</button>
-        <span style={{ margin: '0 auto' }} />
-        <span style={{ fontSize: '13px', fontWeight: 600, color: '#456a88' }}>Pass processed file to:</span>
-        <select style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #dce9f3', background: 'white' }} onChange={(e) => { if (e.target.value) passFileTo(e.target.value); }}>
-          <option value="">Select module...</option>
-          <option value="clean">Clean Excel</option>
-          <option value="compare">Compare Excel (Primary)</option>
-          <option value="merge">Merge Excel (Primary)</option>
-        </select>
-      </div>
+      {step === 1 && <UploadStep file={file} onUpload={uploadDone} onContinue={() => setStep(2)} />}
+      {step === 2 && <>
+        <ArrangeStep mapping={mapping} setMapping={setMapping} file={file} columns={columns} confidence={confidence} setConfidence={setConfidence} serverSession={false} notify={notify} onBack={() => { setStep(1); setFile(null); }} onContinue={triggerDownload} />
+        <div className="step-footer" style={{ borderTop: 0, paddingTop: 0, justifyContent: 'flex-start', paddingLeft: '40px', paddingRight: '40px', gap: '8px' }}>
+          <button className="button button-secondary" onClick={triggerDownload}><Download size={16} /> Download Data</button>
+          <span style={{ margin: '0 auto' }} />
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#456a88' }}>Pass processed file to:</span>
+          <select style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #dce9f3', background: 'white' }} value="" onChange={(e) => { if (e.target.value) passFileTo(e.target.value); }}>
+            <option value="">Select module...</option>
+            <option value="clean">Clean Excel</option>
+            <option value="compare">Compare Excel (Primary)</option>
+            <option value="merge">Merge Excel (Primary)</option>
+          </select>
+        </div>
+      </>}
     </div>
   </section>;
 }

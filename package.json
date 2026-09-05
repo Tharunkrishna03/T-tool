@@ -17,9 +17,9 @@
     "@vitejs/plugin-react": "latest",
     "axios": "latest",
     "lucide-react": "latest",
-    "vite": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "vite": "latest"
   },
   "devDependencies": {
     "electron": "latest",
@@ -28,11 +28,31 @@
   "build": {
     "appId": "com.local.exceldatacleaner",
     "productName": "Excel Data Cleaner",
-    "directories": { "output": "artifacts" },
-    "files": ["dist/**/*", "electron/**/*", "package.json"],
-    "extraResources": [{ "from": "backend/dist/ExcelDataCleanerBackend.exe", "to": "backend/ExcelDataCleanerBackend.exe" }],
-    "win": { "target": ["nsis", "portable"] },
-    "nsis": { "artifactName": "Excel-Data-Cleaner-Setup.exe" },
-    "portable": { "artifactName": "Excel-Data-Cleaner-Portable.exe" }
+    "directories": {
+      "output": "artifacts"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/dist/ExcelDataCleanerBackend.exe",
+        "to": "backend/ExcelDataCleanerBackend.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "artifactName": "Excel-Data-Cleaner-Setup.exe"
+    },
+    "portable": {
+      "artifactName": "Excel-Data-Cleaner-Portable.exe"
+    }
   }
 }
