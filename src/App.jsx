@@ -601,7 +601,7 @@ function ArrangeStep({ mapping, setMapping, file, columns, confidence, setConfid
           </span>
           <b>{item.isCustom ? <span style={{ color: '#829caf', fontStyle: 'italic', fontWeight: 500 }}>New Custom Column</span> : item.source}</b>
           <input value={item.target} onChange={e => updateMappingTarget(item.source, e.target.value)} disabled={!item.included} placeholder="Target column name" />
-          <label className="map-status"><input type="checkbox" checked={item.included} onChange={() => toggleMappingIncluded(item.source)} /> Include</label>
+          <label className="map-status"><input type="checkbox" style={{ width: '13px', height: '13px', margin: 0 }} checked={item.included} onChange={() => toggleMappingIncluded(item.source)} /> Include</label>
         </div>
         <div className="mapping-actions" style={{ display: 'flex', gap: '14px', alignItems: 'center', padding: '10px 15px 10px 50px', background: '#fcfdfd', borderTop: '1px dashed #e8f0f6', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px' }}>
            <select style={{ padding: '6px 8px', borderRadius: '5px', border: '1px solid #dce9f3', fontSize: '11px', color: '#456a88' }} value={item.fillOption || 'Leave Empty'} onChange={e => updateAdditionalProps(item.source, { fillOption: e.target.value })}>
@@ -611,8 +611,8 @@ function ArrangeStep({ mapping, setMapping, file, columns, confidence, setConfid
            {item.fillOption === 'Fill with Default Value' && 
              <input placeholder="Default value" style={{ padding: '5px 9px', borderRadius: '5px', border: '1px solid #dce9f3', fontSize: '11px', width: '200px' }} value={item.defaultValue || ''} onChange={e => updateAdditionalProps(item.source, { defaultValue: e.target.value })} />
            }
-           <button style={{ marginLeft: 'auto', background: 'transparent', border: 0, color: '#d56767', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }} onClick={() => removeColumn(item.source)}>
-             <Trash2 size={13} /> Remove
+           <button style={{ marginLeft: 'auto', background: 'transparent', border: 0, color: '#d56767', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', cursor: 'pointer' }} title="Remove column" onClick={() => removeColumn(item.source)}>
+             <Trash2 size={16} />
            </button>
         </div>
       </div>)}
