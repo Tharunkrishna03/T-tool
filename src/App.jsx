@@ -124,7 +124,7 @@ function App() {
 function Sidebar({ page, setPage }) {
   const items = [
     ['dashboard', Home, 'Dashboard'],
-    ['clean', FileSpreadsheet, 'Clean Excel'],
+    ['clean', FileSpreadsheet, 'Edit Excel'],
     ['compare', GitCompareArrows, 'Compare Excel'],
     ['merge', Merge, 'Merge Excel'],
     ['arrange', TableProperties, 'Arrange Data'],
@@ -148,7 +148,7 @@ function TopBar() {
 function Dashboard({ setPage }) {
   return <section className="page dashboard-page">
     <div className="action-grid">
-      <ActionCard variant="blue" icon={<FileSpreadsheet />} title="Clean Excel" text="Review and standardize one Excel file, step by step." action="Start Cleaning" onClick={() => setPage('clean')} />
+      <ActionCard variant="blue" icon={<FileSpreadsheet />} title="Edit Excel" text="Review and standardize one Excel file, step by step." action="Start Editing" onClick={() => setPage('clean')} />
       <ActionCard variant="white" icon={<GitCompareArrows />} title="Compare Excel Files" text="Find records that are new, missing or common across two files." action="Compare Files" onClick={() => setPage('compare')} />
       <ActionCard variant="white" icon={<Merge />} title="Merge Excel Files" text="Combine two standalone Excel files safely and easily." action="Merge Files" onClick={() => setPage('merge')} />
       <ActionCard variant="white" icon={<TableProperties />} title="Arrange Data" text="Reorder and map columns dynamically, then pass to another tool." action="Arrange Data" onClick={() => setPage('arrange')} />
@@ -317,7 +317,7 @@ function CleanExcel({ notify, ask, askFormat, sharedFile, setSharedFile }) {
     <Stepper current={step} onSelect={(target) => target <= step && setStep(target)} />
     <div className="workflow-card">
       {step === 1 && <UploadStep file={file} onUpload={uploadDone} onContinue={continueStep} />}
-      {step === 2 && <ReviewStep rows={rows} sheet={sheet} sheets={sheets} rowCount={recordCount} columns={columns} search={search} setSearch={setSearch} onSheetChange={selectSheet} onMerge={mergeSheets} onEdit={commitCell} onTableAction={handleTableAction} changes={changes} onUndo={undo} onBack={() => setStep(1)} onContinue={async () => { await refreshIssues(); setStep(3); }} />}
+      {step === 2 && <ReviewStep rows={rows} sheet={sheet} sheets={sheets} rowCount={recordCount} columns={columns} search={search} setSearch={setSearch} onSheetChange={selectSheet} onMerge={mergeSheets} onEdit={commitCell} onTableAction={handleTableAction} changes={changes} onUndo={undo} onRestart={restart} onBack={() => setStep(1)} onContinue={async () => { await refreshIssues(); setStep(3); }} />}
       {step === 3 && <CleanStep rows={rows} columns={columns} issues={issues} serverSession={serverSession} activeTool={activeTool} setActiveTool={setActiveTool} notify={notify} ask={showConfirm} onDataChanged={refreshPreview} onRefreshIssues={refreshIssues} onBack={() => setStep(2)} onContinue={continueStep} />}
       {step === 4 && <ArrangeStep mapping={mapping} setMapping={setMapping} file={file} columns={columns} confidence={mappingConfidence} setConfidence={setMappingConfidence} serverSession={serverSession} notify={notify} onBack={() => setStep(3)} onContinue={applyMapping} />}
       {step === 5 && <ValidateStep rows={rows} recordCount={recordCount} serverSession={serverSession} finalReady={finalReady} setFinalReady={setFinalReady} notify={notify} onBack={() => setStep(4)} onContinue={continueStep} />}
@@ -332,13 +332,14 @@ function PageIntro({ eyebrow, title, text, children }) {
 
 function Stepper({ current, onSelect }) {
   const steps = ['Upload', 'Review', 'Clean', 'Arrange', 'Validate', 'Export'];
-  return <div className="stepper">{steps.map((name, index) => { const n = index + 1; return <button key={name} className={`step ${current === n ? 'current' : ''} ${current > n ? 'done' : ''}`} onClick={() => onSelect(n)} disabled={n > current}><span>{current > n ? <Check size={14} /> : `0${n}`}</span><b>{name}</b>{n < 6 && <i />}</button>; })}</div>;
+  const progressPercent = ((current - 1) / (steps.length - 1)) * 100;
+  return <div className="stepper-wrapper"><div className="stepper">{steps.map((name, index) => { const n = index + 1; return <button key={name} className={`step ${current === n ? 'current' : ''} ${current > n ? 'done' : ''}`} onClick={() => onSelect(n)} disabled={n > current}><span>{current > n ? <Check size={14} /> : `0${n}`}</span><b>{name}</b>{n < 6 && <i />}</button>; })}</div><div className="stepper-progress-track"><div className="stepper-progress-fill" style={{ width: `${progressPercent}%` }} /></div></div>;
 }
 
 function UploadStep({ file, onUpload, onContinue }) {
   const fileInput = useRef(null);
   const handleFile = e => e.target.files?.[0] && onUpload(e.target.files[0]);
-  return <div className="step-content upload-step"><div className="step-title"><span className="step-kicker">STEP 01</span><h2>Upload your Excel file</h2><p>Select an Excel file to start cleaning your data.</p></div>
+  return <div className="step-content upload-step"><div className="step-title"><span className="step-kicker">STEP 01</span><h2>Upload your Excel file</h2><p>Select an Excel file to Start Editing your data.</p></div>
     {!file ? <>
       <button className="upload-zone" onClick={() => fileInput.current?.click()}>
         <span className="upload-icon"><Upload size={29} /></span>
@@ -366,17 +367,17 @@ function UploadStep({ file, onUpload, onContinue }) {
   </div>;
 }
 
-function ReviewStep({ rows, sheet, sheets, rowCount, columns, search, setSearch, onSheetChange, onMerge, onEdit, onTableAction, changes, onUndo, onBack, onContinue }) {
+function ReviewStep({ rows, sheet, sheets, rowCount, columns, search, setSearch, onSheetChange, onMerge, onEdit, onTableAction, changes, onUndo, onRestart, onBack, onContinue }) {
   const [zoom, setZoom] = useState(1);
   return <div className="step-content review-step"><div className="split-step-heading"><div className="step-title"><span className="step-kicker">STEP 02</span><h2>Review your data</h2><p>Double-click a cell to make a quick correction.</p></div><div className="sheet-select"><span>Select sheet</span><label><TableProperties size={16} /><select value={sheet} onChange={e => onSheetChange(e.target.value)}>{sheets.map(name => <option key={name}>{name}</option>)}</select><ChevronDown size={15} /></label></div></div>
-    <div className="review-toolbar"><div className="search-box"><Search size={18} /><input aria-label="Search data" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search data..." /></div><button className="toolbar-button" onClick={() => setZoom(z => z + 0.1)}><ZoomIn size={16} /> Zoom In</button><button className="toolbar-button" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))}><ZoomOut size={16} /> Zoom Out</button><button className="toolbar-button"><Filter size={16} /> Filter</button><span className="data-stat">Rows: {Number(rowCount).toLocaleString()} <i /> Columns: {columns.length}</span><button className="undo-button" onClick={onUndo} disabled={!changes.length}><Undo2 size={16} /> Undo last change</button></div>
+    <div className="review-toolbar"><div className="search-box"><Search size={18} /><input aria-label="Search data" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search data..." /></div><button className="toolbar-button" onClick={() => setZoom(z => z + 0.1)}><ZoomIn size={16} /> Zoom In</button><button className="toolbar-button" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))}><ZoomOut size={16} /> Zoom Out</button><button className="toolbar-button"><Filter size={16} /> Filter</button><span className="data-stat">Rows: {Number(rowCount).toLocaleString()} <i /> Columns: {columns.length}</span><button className="toolbar-button" onClick={onRestart} style={{ color: '#db5b66' }}><RefreshCw size={16} /> Reset Dataset</button><button className="undo-button" onClick={onUndo} disabled={!changes.length}><Undo2 size={16} /> Undo last change</button></div>
     <div className="sheet-detail"><b>{sheet}</b><span>{Number(rowCount).toLocaleString()} rows</span><button onClick={onMerge} disabled={sheets.length < 2}><Merge size={15} /> Merge sheets</button></div>
     <DataTable zoom={zoom} rows={rows} search={search} changes={changes} onEdit={onEdit} onTableAction={onTableAction} />
     <StepFooter onBack={onBack} onContinue={onContinue} />
   </div>;
 }
 
-function DataTable({ rows, search = '', changes = [], onEdit, onTableAction, compact = false, zoom = 1 }) {
+function DataTable({ rows, search = '', changes = [], onEdit, onTableAction, compact = false, zoom = 1, columns = null }) {
   const [editing, setEditing] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [sort, setSort] = useState(null);
@@ -424,7 +425,7 @@ function DataTable({ rows, search = '', changes = [], onEdit, onTableAction, com
        console.error("Context Action failed:", err);
     }
   };
-  const headers = Object.keys(rows[0] || {}).filter(key => key !== 'id');
+  const headers = columns || Object.keys(rows[0] || {}).filter(key => key !== 'id');
   const changed = new Set(changes.map(change => `${change.id}-${change.col}`));
   const tableRows = useMemo(() => {
     let next = rows.filter(row => Object.values(row).join(' ').toLowerCase().includes(search.toLowerCase()));
@@ -443,8 +444,8 @@ function DataTable({ rows, search = '', changes = [], onEdit, onTableAction, com
       <div className="context-menu-item" onClick={() => handleContextAction('paste')}><ClipboardPaste /> Paste / Paste Special</div>
       <div className="context-menu-divider" />
       <div className="context-menu-item" onClick={() => handleContextAction('insert')}><ArrowDownToLine /> Insert</div>
-      <div className="context-menu-item" onClick={() => handleContextAction('delete')}><Trash2 /> Delete</div>
-      <div className="context-menu-item" onClick={() => handleContextAction('clear')}><Eraser /> Clear Contents</div>
+      <div className="context-menu-item danger" onClick={() => handleContextAction('delete')}><Trash2 /> Delete</div>
+      <div className="context-menu-item danger" onClick={() => handleContextAction('clear')}><Eraser /> Clear Contents</div>
       <div className="context-menu-divider" />
       <div className="context-menu-item" onClick={() => handleContextAction('format')}><Paintbrush /> Format Cells</div>
     </div>
@@ -585,8 +586,8 @@ function ArrangeStep({ mapping, setMapping, file, columns, confidence, setConfid
     <div className="mapping-list">
       {mapping.map((item, index) => <div 
           key={item.source} 
-          className="mapping-container" 
-          style={{ marginBottom: '14px', borderRadius: '8px', border: '1px solid #edf3f8', background: dragOverItem === index ? '#f2f8fc' : '#fff', transition: 'background 0.2s', opacity: item.included ? 1 : 0.4 }}
+          className={`mapping-container ${index % 2 !== 0 ? 'even-row' : ''}`} 
+          style={{ marginBottom: '14px', borderRadius: '8px', border: '1px solid #edf3f8', background: dragOverItem === index ? '#f2f8fc' : '', transition: 'background 0.2s', opacity: item.included ? 1 : 0.4 }}
           draggable 
           onDragStart={() => setDraggedItem(index)}
           onDragEnter={() => setDragOverItem(index)}
@@ -707,6 +708,7 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
   const [fields, setFields] = useState([]);
   const [field, setField] = useState('');
   const [comparison, setComparison] = useState(null);
+  const [isComparing, setIsComparing] = useState(false);
   const [tab, setTab] = useState('common');
   const bothFiles = files.first && files.second;
   const usingUploadedFiles = Boolean(files.first?.raw && files.second?.raw);
@@ -736,7 +738,10 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
       .then(result => { 
         if (active) { 
           setFields(result.shared_columns); 
-          setField(result.shared_columns[0] || ''); 
+          let defaultCol = result.shared_columns[0] || '';
+          const targetMatch = result.shared_columns.find(c => /id|serial|email|barcode/i.test(c));
+          if (targetMatch) defaultCol = targetMatch;
+          setField(defaultCol); 
           setFirstHeaders(result.first_columns || []);
           setSecondHeaders(result.second_columns || []);
           setSelectedFirst(result.first_columns || []);
@@ -756,10 +761,12 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
   const compare = async () => {
     if (!usingUploadedFiles) { setComparison({ counts: { first: 5000, second: 5250, common: 4900, only_first: 100, only_second: 350, overall: 5350 }, common_records: comparisonRows.common, only_in_first: comparisonRows.first, only_in_second: comparisonRows.second, overall_records: comparisonRows.common }); notify('Comparison complete'); return; }
     if (!field) return notify('Choose a shared column to compare.', 'warning');
+    setIsComparing(true);
     try {
       const result = await api.compareExcel(files.first.raw, files.second.raw, field, selectedFirst, selectedSecond);
       setComparison(result); setTab('common'); notify('Comparison complete');
     } catch (error) { notify(errorMessage(error, 'Could not compare these Excel files.'), 'warning'); }
+    finally { setIsComparing(false); }
   };
   const counts = comparison?.counts || { first: 0, second: 0, common: 0, only_first: 0, only_second: 0, overall: 0 };
   const records = {
@@ -774,7 +781,8 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
     else notify('There are no new records to export.', 'info');
   };
 
-  return <section className="page compare-page"><PageIntro eyebrow="COMPARE EXCEL" title="Compare Excel files" text="Find what is new, missing, or common across two files." />
+    const getTabColumns = () => { if (records[tab]?.length > 0) return null; if (tab === 'first' && usingUploadedFiles) return Array.from(new Set([...selectedFirst, field])); if (tab === 'second' && usingUploadedFiles) return Array.from(new Set([...selectedSecond, field])); return null; };
+    return <section className="page compare-page"><PageIntro eyebrow="COMPARE EXCEL" title="Compare Excel files" text="Find what is new, missing, or common across two files." />
     <div className="compare-card">
       <div className="compare-upload-grid" style={{ alignItems: 'flex-start' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -788,9 +796,9 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
         </div>
       </div>
       
-      {bothFiles && <div className="compare-controls"><div><span>Compare records using</span><select value={usingUploadedFiles ? field : 'Serial Number'} disabled={usingUploadedFiles && !fields.length} onChange={e => setField(e.target.value)}>{usingUploadedFiles ? fields.map(column => <option key={column}>{column}</option>) : <><option>Serial Number</option><option>Asset ID</option><option>Asset Name</option></>}</select></div>{usingUploadedFiles && !fields.length && <div className="comparison-warning"><AlertTriangle size={17} /> These files do not have an exact shared column name.</div>}<button className="button button-primary" disabled={usingUploadedFiles && !field} onClick={compare}><GitCompareArrows size={18} /> Compare files</button></div>}
+      {bothFiles && <div className="compare-controls"><div><span>Compare records using</span><select value={usingUploadedFiles ? field : 'Serial Number'} disabled={usingUploadedFiles && !fields.length} onChange={e => setField(e.target.value)}>{usingUploadedFiles ? fields.map(column => <option key={column}>{column}</option>) : <><option>Serial Number</option><option>Asset ID</option><option>Asset Name</option></>}</select></div>{usingUploadedFiles && !fields.length && <div className="comparison-warning"><AlertTriangle size={17} /> These files do not have an exact shared column name.</div>}<button className="button button-primary" disabled={(usingUploadedFiles && !field) || isComparing} onClick={compare}>{isComparing ? <><LoaderCircle className="animate-spin" size={18} /> Analyzing...</> : <><GitCompareArrows size={18} /> Compare files</>}</button></div>}
     </div>
-    {comparison && <div className="comparison-results"><div className="results-head"><div><span className="eyebrow">COMPARISON COMPLETE</span><h2>Here's what we found</h2></div><span className="done-pill"><CheckCircle2 size={16} /> Complete</span></div><div className="result-counts"><ResultCount label="First Excel" count={Number(counts.first).toLocaleString()} /><ResultCount label="Second Excel" count={Number(counts.second).toLocaleString()} /><ResultCount label="Common records" count={Number(counts.common).toLocaleString()} blue /><ResultCount label="Only in first" count={Number(counts.only_first).toLocaleString()} /><ResultCount label="Only in second" count={Number(counts.only_second).toLocaleString()} green /></div><div className="result-tabs">{[['common', 'Common records', counts.common], ['first', 'Only in first', counts.only_first], ['second', 'Only in second', counts.only_second], ['overall', 'Overall data', counts.overall]].map(([key, label, count]) => <button key={key} className={tab === key ? 'selected' : ''} onClick={() => setTab(key)}>{label}<span>{Number(count).toLocaleString()}</span></button>)}</div><div className="result-content"><div className="result-context"><div><h3>{tab === 'common' ? 'Records in both files' : tab === 'first' ? 'Records only in the first file' : tab === 'overall' ? 'Combined Master Data' : 'New records found'}</h3><p>{tab === 'second' ? 'These records are not present in the first Excel file.' : tab === 'overall' ? 'Unified outer join of both datasets.' : 'Review complete records below before taking action.'}</p></div>{tab === 'second' && <button className="button button-secondary" onClick={downloadNew}><Download size={16} /> Extract new records</button>}</div><DataTable rows={rowsWithIds(records[tab])} compact /></div></div>}
+    {comparison && <div className="comparison-results"><div className="results-head"><div><span className="eyebrow">COMPARISON COMPLETE</span><h2>Here's what we found</h2></div><span className="done-pill"><CheckCircle2 size={16} /> Complete</span></div><div className="result-counts"><ResultCount label="First Excel" count={Number(counts.first).toLocaleString()} /><ResultCount label="Second Excel" count={Number(counts.second).toLocaleString()} /><ResultCount label="Common records" count={Number(counts.common).toLocaleString()} blue /><ResultCount label="Only in first" count={Number(counts.only_first).toLocaleString()} /><ResultCount label="Only in second" count={Number(counts.only_second).toLocaleString()} green /></div><div className="result-tabs">{[['common', 'Common records', counts.common], ['first', 'Only in first', counts.only_first], ['second', 'Only in second', counts.only_second], ['overall', 'Overall data', counts.overall]].map(([key, label, count]) => <button key={key} className={tab === key ? 'selected' : ''} onClick={() => setTab(key)}>{label}<span>{Number(count).toLocaleString()}</span></button>)}</div><div className="result-content"><div className="result-context"><div><h3>{tab === 'common' ? 'Records in both files' : tab === 'first' ? 'Records only in the first file' : tab === 'overall' ? 'Combined Master Data' : 'New records found'}</h3><p>{tab === 'second' ? 'These records are not present in the first Excel file.' : tab === 'overall' ? 'Unified outer join of both datasets.' : 'Review complete records below before taking action.'}</p></div>{tab === 'second' && <button className="button button-secondary" onClick={downloadNew}><Download size={16} /> Extract new records</button>}</div><DataTable rows={rowsWithIds(records[tab])} columns={getTabColumns()} compact /></div></div>}
   </section>;
 }
 
@@ -895,7 +903,7 @@ function StandaloneArrange({ notify, askFormat, setSharedFile, setPage }) {
           <span style={{ fontSize: '13px', fontWeight: 600, color: '#456a88' }}>Pass processed file to:</span>
           <select style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #dce9f3', background: 'white' }} value="" onChange={(e) => { if (e.target.value) passFileTo(e.target.value); }}>
             <option value="">Select module...</option>
-            <option value="clean">Clean Excel</option>
+            <option value="clean">Edit Excel</option>
             <option value="compare">Compare Excel (Primary)</option>
             <option value="merge">Merge Excel (Primary)</option>
           </select>

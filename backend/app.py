@@ -388,7 +388,10 @@ async def compare_excel_files(
     
     # Merge common ones for difference viewing
     merged_common = pd.merge(first_common, second_common, on=field, how='inner', suffixes=(' (First)', ' (Second)')).head(200).fillna("").to_dict("records")
-    merged_overall = pd.merge(first_frame, second_frame, on=field, how='outer', suffixes=(' (First)', ' (Second)')).head(300).fillna("").to_dict("records")
+    
+    first_valid = first_frame[first_frame[field] != ""]
+    second_valid = second_frame[second_frame[field] != ""]
+    merged_overall = pd.merge(first_valid, second_valid, on=field, how='outer', suffixes=(' (First)', ' (Second)')).head(300).fillna("").to_dict("records")
 
     return {
         "field": field, 
@@ -398,7 +401,7 @@ async def compare_excel_files(
             "common": len(common), 
             "only_first": len(only_first), 
             "only_second": len(only_second),
-            "overall": len(set(first_frame[field].astype(str).str.strip()) | set(second_frame[field].astype(str).str.strip()) - {""})
+            "overall": len((set(first_frame[field].astype(str).str.strip()) | set(second_frame[field].astype(str).str.strip())) - {""})
         }, 
         "common_records": merged_common, 
         "only_in_first": first_frame[first_frame[field].isin(only_first)].head(200).fillna("").to_dict("records"), 
