@@ -726,10 +726,12 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
 
   const [firstHeaders, setFirstHeaders] = useState([]);
   const [secondHeaders, setSecondHeaders] = useState([]);
+  const [selectedFirst, setSelectedFirst] = useState([]);
+  const [selectedSecond, setSelectedSecond] = useState([]);
 
   useEffect(() => {
     let active = true;
-    if (!usingUploadedFiles) { setFields([]); setField(''); setFirstHeaders([]); setSecondHeaders([]); return undefined; }
+    if (!usingUploadedFiles) { setFields([]); setField(''); setFirstHeaders([]); setSecondHeaders([]); setSelectedFirst([]); setSelectedSecond([]); return undefined; }
     api.compareFields(files.first.raw, files.second.raw)
       .then(result => { 
         if (active) { 
@@ -737,23 +739,25 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
           setField(result.shared_columns[0] || ''); 
           setFirstHeaders(result.first_columns || []);
           setSecondHeaders(result.second_columns || []);
+          setSelectedFirst(result.first_columns || []);
+          setSelectedSecond(result.second_columns || []);
         } 
       })
       .catch(error => { 
         if (active) { 
-          setFields([]); setField(''); setFirstHeaders([]); setSecondHeaders([]);
+          setFields([]); setField(''); setFirstHeaders([]); setSecondHeaders([]); setSelectedFirst([]); setSelectedSecond([]);
           notify(errorMessage(error, 'Could not read the columns in both files.'), 'warning'); 
         } 
       });
     return () => { active = false; };
   }, [files.first?.raw, files.second?.raw]);
 
-  const useSamples = () => { setFiles({ first: { name: 'Asset_List_August.xlsx', rows: '5,000', raw: null }, second: { name: 'Asset_List_September.xlsx', rows: '5,250', raw: null } }); setComparison(null); setTab('common'); setFirstHeaders(['Serial Number', 'Asset Name', 'Model']); setSecondHeaders(['Serial Number', 'Asset Name', 'Status']); notify('Sample files loaded', 'info'); };
+  const useSamples = () => { setFiles({ first: { name: 'Asset_List_August.xlsx', rows: '5,000', raw: null }, second: { name: 'Asset_List_September.xlsx', rows: '5,250', raw: null } }); setComparison(null); setTab('common'); setFirstHeaders(['Serial Number', 'Asset Name', 'Model']); setSecondHeaders(['Serial Number', 'Asset Name', 'Status']); setSelectedFirst(['Serial Number', 'Asset Name', 'Model']); setSelectedSecond(['Serial Number', 'Asset Name', 'Status']); notify('Sample files loaded', 'info'); };
   const compare = async () => {
     if (!usingUploadedFiles) { setComparison({ counts: { first: 5000, second: 5250, common: 4900, only_first: 100, only_second: 350, overall: 5350 }, common_records: comparisonRows.common, only_in_first: comparisonRows.first, only_in_second: comparisonRows.second, overall_records: comparisonRows.common }); notify('Comparison complete'); return; }
     if (!field) return notify('Choose a shared column to compare.', 'warning');
     try {
-      const result = await api.compareExcel(files.first.raw, files.second.raw, field);
+      const result = await api.compareExcel(files.first.raw, files.second.raw, field, selectedFirst, selectedSecond);
       setComparison(result); setTab('common'); notify('Comparison complete');
     } catch (error) { notify(errorMessage(error, 'Could not compare these Excel files.'), 'warning'); }
   };
@@ -775,12 +779,12 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
       <div className="compare-upload-grid" style={{ alignItems: 'flex-start' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <CompareUpload title="First Excel file" file={files.first} inputRef={firstRef} onClick={() => firstRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('first', event.target.files[0])} />
-          {firstHeaders.length > 0 && <div className="choice-row" style={{ marginTop: 15, justifyContent: 'center', maxHeight: 110, overflowY: 'auto' }}>{firstHeaders.map(h => <label key={h}><input type="checkbox" checked readOnly /> {h}</label>)}</div>}
+          {firstHeaders.length > 0 && <div className="choice-row" style={{ marginTop: 15, justifyContent: 'center' }}>{firstHeaders.map(h => <label key={h}><input type="checkbox" checked={selectedFirst.includes(h)} onChange={e => e.target.checked ? setSelectedFirst([...selectedFirst, h]) : setSelectedFirst(selectedFirst.filter(c => c !== h))} /> {h}</label>)}</div>}
         </div>
         <div className="vs-badge" style={{ marginTop: 75 }}>VS</div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <CompareUpload title="Second Excel file" file={files.second} inputRef={secondRef} onClick={() => secondRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('second', event.target.files[0])} />
-          {secondHeaders.length > 0 && <div className="choice-row" style={{ marginTop: 15, justifyContent: 'center', maxHeight: 110, overflowY: 'auto' }}>{secondHeaders.map(h => <label key={h}><input type="checkbox" checked readOnly /> {h}</label>)}</div>}
+          {secondHeaders.length > 0 && <div className="choice-row" style={{ marginTop: 15, justifyContent: 'center' }}>{secondHeaders.map(h => <label key={h}><input type="checkbox" checked={selectedSecond.includes(h)} onChange={e => e.target.checked ? setSelectedSecond([...selectedSecond, h]) : setSelectedSecond(selectedSecond.filter(c => c !== h))} /> {h}</label>)}</div>}
         </div>
       </div>
       

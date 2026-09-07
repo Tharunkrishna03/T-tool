@@ -33,9 +33,11 @@ export const api = {
     body.append('first', first); body.append('second', second);
     return (await client.post('/compare/fields', body)).data;
   },
-  compareExcel: async (first, second, field) => {
+  compareExcel: async (first, second, field, first_cols, second_cols) => {
     const body = new FormData();
     body.append('first', first); body.append('second', second); body.append('field', field);
+    if (first_cols) body.append('first_cols', first_cols.join(','));
+    if (second_cols) body.append('second_cols', second_cols.join(','));
     return (await client.post('/compare', body)).data;
   },
   mergeFiles: async (first, second) => {

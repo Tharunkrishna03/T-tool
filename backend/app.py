@@ -351,6 +351,8 @@ async def compare_excel_files(
     first: UploadFile = File(...),
     second: UploadFile = File(...),
     field: str = Form(...),
+    first_cols: str = Form(""),
+    second_cols: str = Form(""),
 ) -> dict[str, Any]:
     def read_uploaded(upload: UploadFile) -> pd.DataFrame:
         suffix = Path(upload.filename or "").suffix.lower()
@@ -360,15 +362,31 @@ async def compare_excel_files(
             return pd.read_csv(upload.file, dtype=str, keep_default_na=False).fillna("")
         return pd.read_excel(upload.file, dtype=str, keep_default_na=False).fillna("")
     first_frame, second_frame = read_uploaded(first), read_uploaded(second)
+    
+    if first_cols:
+        cols1 = [c.strip() for c in first_cols.split(",")]
+        if field not in cols1 and field in first_frame.columns: cols1.append(field)
+        first_frame = first_frame[[c for c in cols1 if c in first_frame.columns]]
+    if second_cols:
+        cols2 = [c.strip() for c in second_cols.split(",")]
+        if field not in cols2 and field in second_frame.columns: cols2.append(field)
+        second_frame = second_frame[[c for c in cols2 if c in second_frame.columns]]
+
     if field not in first_frame.columns or field not in second_frame.columns:
         raise HTTPException(400, f"We couldn't find a shared {field} column. Choose a field available in both files.")
-    first_keys = set(first_frame[field].astype(str).str.strip()) - {""}
-    second_keys = set(second_frame[field].astype(str).str.strip()) - {""}
+        
+    first_frame[field] = first_frame[field].astype(str).str.strip()
+    second_frame[field] = second_frame[field].astype(str).str.strip()
+        
+    first_keys = set(first_frame[field]) - {""}
+    second_keys = set(second_frame[field]) - {""}
     common = first_keys & second_keys
     only_first, only_second = first_keys - second_keys, second_keys - first_keys
 
     first_common = first_frame[first_frame[field].isin(common)]
     second_common = second_frame[second_frame[field].isin(common)]
+    
+    # Merge common ones for difference viewing
     merged_common = pd.merge(first_common, second_common, on=field, how='inner', suffixes=(' (First)', ' (Second)')).head(200).fillna("").to_dict("records")
     merged_overall = pd.merge(first_frame, second_frame, on=field, how='outer', suffixes=(' (First)', ' (Second)')).head(300).fillna("").to_dict("records")
 
