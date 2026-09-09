@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, CircleHelp, Download, FileSpreadsheet, Filter,
   FolderOpen, GitCompareArrows, GripVertical, Home, Info, LoaderCircle,
   Merge, MoreHorizontal, PencilLine, Plus, RefreshCw, Search, Settings,
-  ShieldCheck, Sparkles, TableProperties, Trash2, Undo2, Upload, X, ZoomIn, ZoomOut, Scissors, Copy, ClipboardPaste, ArrowDownToLine, Eraser, Paintbrush 
+  ShieldCheck, Sparkles, TableProperties, Trash2, Undo2, Upload, X, ZoomIn, ZoomOut, Scissors, Copy, ClipboardPaste, ArrowDownToLine, Eraser, Paintbrush, SearchX, Menu
 } from 'lucide-react';
 import { api } from './services/api';
 
@@ -88,6 +88,7 @@ function FormatDialog({ onConfirm, onClose }) {
 
 function App() {
   const [page, setPage] = useState('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState(null);
   const [formatTask, setFormatTask] = useState(null);
@@ -105,7 +106,8 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar page={page} setPage={setPage} />
+      <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}</button>
+      <Sidebar page={page} setPage={setPage} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
       <main className="main-panel">
         {page === 'dashboard' && <Dashboard setPage={setPage} />}
         {page === 'clean' && <CleanExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
@@ -121,7 +123,7 @@ function App() {
   );
 }
 
-function Sidebar({ page, setPage }) {
+function Sidebar({ page, setPage, mobileMenuOpen, setMobileMenuOpen }) {
   const items = [
     ['dashboard', Home, 'Dashboard'],
     ['clean', FileSpreadsheet, 'Edit Excel'],
@@ -129,13 +131,13 @@ function Sidebar({ page, setPage }) {
     ['merge', Merge, 'Merge Excel'],
     ['arrange', TableProperties, 'Arrange Data'],
   ];
-  return <aside className="sidebar">
+  return <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
     <div className="brand"><span className="brand-icon"><img src="/logo.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'fit' }} /></span><span>T<br />Tool</span></div>
     <nav className="nav-list">
       <p className="nav-label">WORKSPACE</p>
-      {items.map(([key, Icon, label]) => <button key={key} className={`nav-item ${page === key ? 'active' : ''}`} onClick={() => setPage(key)}><Icon size={19} />{label}</button>)}
+      {items.map(([key, Icon, label]) => <button key={key} className={`nav-item ${page === key ? 'active' : ''}`} onClick={() => { setPage(key); setMobileMenuOpen?.(false); }}><Icon size={19} />{label}</button>)}
       <div className="nav-rule" />
-      <button className={`nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => setPage('settings')}><Settings size={19} />Settings</button>
+      <button className={`nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => { setPage('settings'); setMobileMenuOpen?.(false); }}><Settings size={19} />Settings</button>
     </nav>
     <div className="privacy-card" onClick={() => window.location.reload()} style={{ cursor: 'pointer' }}><RefreshCw size={20} /><div><b>Refresh Page</b><span>Click to reload application</span></div></div>
   </aside>;
@@ -436,7 +438,7 @@ function DataTable({ rows, search = '', changes = [], onEdit, onTableAction, com
   const totalPages = Math.ceil(tableRows.length / pageSize) || 1;
   const paginatedRows = tableRows.slice((page - 1) * pageSize, page * pageSize);
   const save = async () => { if (!editing) return; const change = editing; setEditing(null); await onEdit?.(change.id, change.column, change.value); };
-  return <div style={{ display: 'flex', flexDirection: 'column' }}><div className={`table-wrap ${compact ? 'compact-table' : ''}`} style={{ zoom }}><table><thead><tr><th className="row-number">#</th>{headers.map(header => <th key={header}><button onClick={() => setSort(sort === header ? '__desc' : header)}>{header}<ChevronDown size={13} /></button></th>)}</tr></thead><tbody>{paginatedRows.map((row, index) => <tr key={row.id}>{<td className="row-number">{(page - 1) * pageSize + index + 1}</td>}{headers.map(column => { const key = `${row.id}-${column}`; const isEditing = editing?.id === row.id && editing?.column === column; return <td key={column} title={row[column] ? String(row[column]) : ''} className={`${changed.has(key) ? 'was-edited' : ''} ${String(row[column]).match(/E\+\d+/) ? 'number-alert' : ''}`} onDoubleClick={() => onEdit && setEditing({ id: row.id, column, value: row[column] })} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, id: row.id, column, value: row[column] }); }}>{isEditing ? <input autoFocus value={editing.value} onChange={e => setEditing({ ...editing, value: e.target.value })} onBlur={save} onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(null); }} /> : <><span>{row[column] || <em className="empty-cell">Empty</em>}</span>{changed.has(key) && <small>Modified</small>}</>}</td>; })}</tr>)}</tbody></table>{tableRows.length === 0 && <div className="empty-table">No matching data found.</div>}
+  return <div style={{ display: 'flex', flexDirection: 'column' }}><div className={`table-wrap ${compact ? 'compact-table' : ''}`} style={{ zoom }}><table><thead><tr><th className="row-number">#</th>{headers.map(header => <th key={header}><button onClick={() => setSort(sort === header ? '__desc' : header)}>{header}<ChevronDown size={13} /></button></th>)}</tr></thead><tbody>{paginatedRows.map((row, index) => <tr key={row.id}>{<td className="row-number">{(page - 1) * pageSize + index + 1}</td>}{headers.map(column => { const key = `${row.id}-${column}`; const isEditing = editing?.id === row.id && editing?.column === column; return <td key={column} title={row[column] ? String(row[column]) : ''} className={`${changed.has(key) ? 'was-edited' : ''} ${String(row[column]).match(/E\+\d+/) ? 'number-alert' : ''}`} onDoubleClick={() => onEdit && setEditing({ id: row.id, column, value: row[column] })} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, id: row.id, column, value: row[column] }); }}>{isEditing ? <input autoFocus value={editing.value} onChange={e => setEditing({ ...editing, value: e.target.value })} onBlur={save} onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(null); }} /> : <><span>{row[column] || <em className="empty-cell">Empty</em>}</span>{changed.has(key) && <small>Modified</small>}</>}</td>; })}</tr>)}</tbody></table>{tableRows.length === 0 && <div className="empty-table" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6)', color: '#8fa6b9' }}><SearchX size={44} strokeWidth={1} style={{ marginBottom: 'var(--space-3)', color: '#a0b9ce' }} /><span>No matching records found.</span></div>}
   {contextMenu && (
     <div className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(e) => e.stopPropagation()}>
       <div className="context-menu-item" onClick={() => handleContextAction('cut')}><Scissors /> Cut</div>
@@ -796,7 +798,7 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
         </div>
       </div>
       
-      {bothFiles && <div className="compare-controls"><div><span>Compare records using</span><select value={usingUploadedFiles ? field : 'Serial Number'} disabled={usingUploadedFiles && !fields.length} onChange={e => setField(e.target.value)}>{usingUploadedFiles ? fields.map(column => <option key={column}>{column}</option>) : <><option>Serial Number</option><option>Asset ID</option><option>Asset Name</option></>}</select></div>{usingUploadedFiles && !fields.length && <div className="comparison-warning"><AlertTriangle size={17} /> These files do not have an exact shared column name.</div>}<button className="button button-primary" disabled={(usingUploadedFiles && !field) || isComparing} onClick={compare}>{isComparing ? <><LoaderCircle className="animate-spin" size={18} /> Analyzing...</> : <><GitCompareArrows size={18} /> Compare files</>}</button></div>}
+      {bothFiles && <div className="compare-controls"><div><span>Compare records using</span><select value={usingUploadedFiles ? field : 'Serial Number'} disabled={usingUploadedFiles && !fields.length} onChange={e => setField(e.target.value)}>{usingUploadedFiles ? fields.map(column => <option key={column}>{column}</option>) : <><option>Serial Number</option><option>Asset ID</option><option>Asset Name</option></>}</select></div>{usingUploadedFiles && !fields.length && <div className="comparison-warning"><AlertTriangle size={17} /> These files do not have an exact shared column name.</div>}<button className="button button-primary" disabled={(usingUploadedFiles && !field) || isComparing} onClick={compare}>{isComparing ? <><div className="loading" style={{ transform: 'scale(0.2)', width: '20px', height: '20px' }}><span></span><span></span><span></span><span></span><span></span></div> Analyzing...</> : <><GitCompareArrows size={18} /> Compare files</>}</button></div>}
     </div>
     {comparison && <div className="comparison-results"><div className="results-head"><div><span className="eyebrow">COMPARISON COMPLETE</span><h2>Here's what we found</h2></div><span className="done-pill"><CheckCircle2 size={16} /> Complete</span></div><div className="result-counts"><ResultCount label="First Excel" count={Number(counts.first).toLocaleString()} /><ResultCount label="Second Excel" count={Number(counts.second).toLocaleString()} /><ResultCount label="Common records" count={Number(counts.common).toLocaleString()} blue /><ResultCount label="Only in first" count={Number(counts.only_first).toLocaleString()} /><ResultCount label="Only in second" count={Number(counts.only_second).toLocaleString()} green /></div><div className="result-tabs">{[['common', 'Common records', counts.common], ['first', 'Only in first', counts.only_first], ['second', 'Only in second', counts.only_second], ['overall', 'Overall data', counts.overall]].map(([key, label, count]) => <button key={key} className={tab === key ? 'selected' : ''} onClick={() => setTab(key)}>{label}<span>{Number(count).toLocaleString()}</span></button>)}</div><div className="result-content"><div className="result-context"><div><h3>{tab === 'common' ? 'Records in both files' : tab === 'first' ? 'Records only in the first file' : tab === 'overall' ? 'Combined Master Data' : 'New records found'}</h3><p>{tab === 'second' ? 'These records are not present in the first Excel file.' : tab === 'overall' ? 'Unified outer join of both datasets.' : 'Review complete records below before taking action.'}</p></div>{tab === 'second' && <button className="button button-secondary" onClick={downloadNew}><Download size={16} /> Extract new records</button>}</div><DataTable rows={rowsWithIds(records[tab])} columns={getTabColumns()} compact /></div></div>}
   </section>;
@@ -914,3 +916,4 @@ function StandaloneArrange({ notify, askFormat, setSharedFile, setPage }) {
 }
 
 export default App;
+
