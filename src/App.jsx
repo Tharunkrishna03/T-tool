@@ -88,6 +88,7 @@ function FormatDialog({ onConfirm, onClose }) {
 
 function App() {
   const [page, setPage] = useState('dashboard');
+  const [isNavigating, setIsNavigating] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState(null);
@@ -104,17 +105,34 @@ function App() {
     setFormatTask(() => callback);
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage === page) return;
+    setIsNavigating(true);
+    setTimeout(() => {
+      setPage(newPage);
+      setIsNavigating(false);
+    }, 400);
+  };
+
   return (
     <div className="app-shell">
       <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}</button>
-      <Sidebar page={page} setPage={setPage} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
+      <Sidebar page={page} setPage={handlePageChange} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
       <main className="main-panel">
-        {page === 'dashboard' && <Dashboard setPage={setPage} />}
-        {page === 'clean' && <CleanExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
-        {page === 'compare' && <CompareExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
-        {page === 'merge' && <MergeExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
-        {page === 'arrange' && <StandaloneArrange notify={notify} askFormat={askFormat} setSharedFile={setSharedFile} setPage={setPage} />}
-        {page === 'settings' && <SettingsPage notify={notify} />}
+        {isNavigating ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '80vh' }}>
+            <div className="loading" style={{ transform: 'scale(0.6)' }}><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+        ) : (
+          <>
+            {page === 'dashboard' && <Dashboard setPage={handlePageChange} />}
+            {page === 'clean' && <CleanExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
+            {page === 'compare' && <CompareExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
+            {page === 'merge' && <MergeExcel notify={notify} ask={setModal} askFormat={askFormat} sharedFile={sharedFile} setSharedFile={setSharedFile} />}
+            {page === 'arrange' && <StandaloneArrange notify={notify} askFormat={askFormat} setSharedFile={setSharedFile} setPage={handlePageChange} />}
+            {page === 'settings' && <SettingsPage notify={notify} />}
+          </>
+        )}
       </main>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       {modal && <ConfirmDialog {...modal} onClose={() => setModal(null)} />}
