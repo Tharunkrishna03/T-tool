@@ -340,9 +340,17 @@ function Stepper({ current, onSelect }) {
 
 function UploadStep({ file, onUpload, onContinue }) {
   const fileInput = useRef(null);
-  const handleFile = e => e.target.files?.[0] && onUpload(e.target.files[0]);
+  const [isUploading, setIsUploading] = useState(false);
+  const handleFile = async e => {
+    if (e.target.files?.[0]) {
+      setIsUploading(true);
+      await onUpload(e.target.files[0]);
+      setIsUploading(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
   return <div className="step-content upload-step"><div className="step-title"><span className="step-kicker">STEP 01</span><h2>Upload your Excel file</h2><p>Select an Excel file to Start Editing your data.</p></div>
-    {!file ? <>
+    {isUploading ? <div className="upload-zone" style={{ cursor: 'default', pointerEvents: 'none' }}><div className="loading" style={{ transform: 'scale(0.4)' }}><span></span><span></span><span></span><span></span><span></span></div><b style={{ marginTop: '10px' }}>Loading file...</b></div> : (!file ? <>
       <button className="upload-zone" onClick={() => fileInput.current?.click()}>
         <span className="upload-icon"><Upload size={29} /></span>
         <b>Drop your Excel file here</b><span>or</span>
@@ -364,7 +372,7 @@ function UploadStep({ file, onUpload, onContinue }) {
         <small>.xlsx, .xls and .csv supported</small>
       </button>
       <input ref={fileInput} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} />
-    </> : <div className="file-ready"><div className="file-ready-icon"><FileSpreadsheet size={28} /></div><div className="file-info"><span><CheckCircle2 size={17} /> File uploaded successfully</span><h3>{file.name}</h3><p>{Number(file.rows).toLocaleString()} rows <i /> {file.columns} columns <i /> {file.sheets} sheets</p></div><button className="icon-button" title="Choose a different file" onClick={() => fileInput.current?.click()}><RefreshCw size={18} /></button><input ref={fileInput} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} /></div>}
+    </> : <div className="file-ready"><div className="file-ready-icon"><FileSpreadsheet size={28} /></div><div className="file-info"><span><CheckCircle2 size={17} /> File uploaded successfully</span><h3>{file.name}</h3><p>{Number(file.rows).toLocaleString()} rows <i /> {file.columns} columns <i /> {file.sheets} sheets</p></div><button className="icon-button" title="Choose a different file" onClick={() => fileInput.current?.click()}><RefreshCw size={18} /></button><input ref={fileInput} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} /></div>)}
     <StepFooter canContinue={!!file} onContinue={onContinue} />
   </div>;
 }
@@ -798,7 +806,7 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
         </div>
       </div>
       
-      {bothFiles && <div className="compare-controls"><div><span>Compare records using</span><select value={usingUploadedFiles ? field : 'Serial Number'} disabled={usingUploadedFiles && !fields.length} onChange={e => setField(e.target.value)}>{usingUploadedFiles ? fields.map(column => <option key={column}>{column}</option>) : <><option>Serial Number</option><option>Asset ID</option><option>Asset Name</option></>}</select></div>{usingUploadedFiles && !fields.length && <div className="comparison-warning"><AlertTriangle size={17} /> These files do not have an exact shared column name.</div>}<button className="button button-primary" disabled={(usingUploadedFiles && !field) || isComparing} onClick={compare}>{isComparing ? <><div className="loading" style={{ transform: 'scale(0.2)', width: '20px', height: '20px' }}><span></span><span></span><span></span><span></span><span></span></div> Analyzing...</> : <><GitCompareArrows size={18} /> Compare files</>}</button></div>}
+      {bothFiles && <div className="compare-controls"><div><span>Compare records using</span><select value={field || 'Serial Number'} disabled={usingUploadedFiles && !fields.length} onChange={e => setField(e.target.value)}>{usingUploadedFiles ? fields.map(column => <option key={column}>{column}</option>) : <><option>Serial Number</option><option>Asset ID</option><option>Asset Name</option></>}</select></div>{usingUploadedFiles && !fields.length && <div className="comparison-warning"><AlertTriangle size={17} /> These files do not have an exact shared column name.</div>}<button className="button button-primary" disabled={(usingUploadedFiles && !field) || isComparing} onClick={compare}>{isComparing ? <><div className="loading" style={{ transform: 'scale(0.2)', width: '20px', height: '20px' }}><span></span><span></span><span></span><span></span><span></span></div> Analyzing...</> : <><GitCompareArrows size={18} /> Compare files</>}</button></div>}
     </div>
     {comparison && <div className="comparison-results"><div className="results-head"><div><span className="eyebrow">COMPARISON COMPLETE</span><h2>Here's what we found</h2></div><span className="done-pill"><CheckCircle2 size={16} /> Complete</span></div><div className="result-counts"><ResultCount label="First Excel" count={Number(counts.first).toLocaleString()} /><ResultCount label="Second Excel" count={Number(counts.second).toLocaleString()} /><ResultCount label="Common records" count={Number(counts.common).toLocaleString()} blue /><ResultCount label="Only in first" count={Number(counts.only_first).toLocaleString()} /><ResultCount label="Only in second" count={Number(counts.only_second).toLocaleString()} green /></div><div className="result-tabs">{[['common', 'Common records', counts.common], ['first', 'Only in first', counts.only_first], ['second', 'Only in second', counts.only_second], ['overall', 'Overall data', counts.overall]].map(([key, label, count]) => <button key={key} className={tab === key ? 'selected' : ''} onClick={() => setTab(key)}>{label}<span>{Number(count).toLocaleString()}</span></button>)}</div><div className="result-content"><div className="result-context"><div><h3>{tab === 'common' ? 'Records in both files' : tab === 'first' ? 'Records only in the first file' : tab === 'overall' ? 'Combined Master Data' : 'New records found'}</h3><p>{tab === 'second' ? 'These records are not present in the first Excel file.' : tab === 'overall' ? 'Unified outer join of both datasets.' : 'Review complete records below before taking action.'}</p></div>{tab === 'second' && <button className="button button-secondary" onClick={downloadNew}><Download size={16} /> Extract new records</button>}</div><DataTable rows={rowsWithIds(records[tab])} columns={getTabColumns()} compact /></div></div>}
   </section>;
