@@ -869,7 +869,7 @@ function MergeExcel({ notify, askFormat, sharedFile, setSharedFile }) {
   };
 
   return <section className="page compare-page"><PageIntro eyebrow="MERGE EXCEL" title="Merge Data" text="Seamlessly append the records of two different datasets." />
-    <div className="compare-card"><div className="compare-upload-grid"><CompareUpload title="Primary Excel file" file={files.first} inputRef={firstRef} onClick={() => firstRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('first', event.target.files[0])} type="merge" /><div className="vs-badge">+</div><CompareUpload title="Secondary Excel file" file={files.second} inputRef={secondRef} onClick={() => secondRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('second', event.target.files[0])} type="merge" /></div>
+    <div className="compare-card" style={{ minHeight: 'auto', paddingBottom: '35px' }}><div className="compare-upload-grid"><CompareUpload title="Primary Excel file" file={files.first} inputRef={firstRef} onClick={() => firstRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('first', event.target.files[0])} type="merge" /><div className="vs-badge">+</div><CompareUpload title="Secondary Excel file" file={files.second} inputRef={secondRef} onClick={() => secondRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('second', event.target.files[0])} type="merge" /></div>
       
       {bothFiles && <div className="compare-controls"><div></div><button className="button button-primary" onClick={mergeFiles}><Merge size={18} /> Merge files</button></div>}
     </div>
