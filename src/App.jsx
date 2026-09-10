@@ -368,26 +368,12 @@ function UploadStep({ file, onUpload, onContinue }) {
       if (fileInput.current) fileInput.current.value = '';
     }
   };
-  return <div className="step-content upload-step"><div className="step-title"><span className="step-kicker">STEP 01</span><h2>Upload your Excel file</h2><p>Select an Excel file to Start Editing your data.</p></div>
+  return <div className="step-content upload-step"><div className="step-title"><span className="step-kicker">STEP 01</span><h2>Upload your Excel file</h2><p>Select an Excel file to start editing your data.</p></div>
     {isUploading ? <div className="upload-zone" style={{ cursor: 'default', pointerEvents: 'none', background: '#f2f9ff' }}><div className="loading" style={{ transform: 'scale(0.7)' }}><span></span><span></span><span></span><span></span><span></span></div><b style={{ marginTop: '18px', color: '#38607e' }}>Processing file...</b></div> : (!file ? <>
       <button className="upload-zone" onClick={() => fileInput.current?.click()}>
         <span className="upload-icon"><Upload size={29} /></span>
         <b>Drop your Excel file here</b><span>or</span>
-        <span className="Documents-btn">
-          <span className="folderContainer">
-            <svg className="fileBack" viewBox="0 0 146 113" fill="#1b6bbb">
-              <path d="M0 16C0 7.163 7.163 0 16 0h40l20 20h54c8.837 0 16 7.163 16 16v77H0z" />
-            </svg>
-            <svg className="filePage" viewBox="0 0 100 120" fill="white">
-              <rect x="0" y="0" width="100" height="120" rx="8" />
-              <path d="M20 30h60M20 50h60M20 70h40" stroke="#1b6bbb" strokeWidth="6" strokeLinecap="round" />
-            </svg>
-            <svg className="fileFront" viewBox="0 0 146 80" fill="#3D9BFC">
-              <path d="M0 0h146v64c0 8.837-7.163 16-16 16H16c-8.837 0-16-7.163-16-16z" />
-            </svg>
-          </span>
-          <span className="text">Browse files</span>
-        </span>
+        <DocumentsBtn />
         <small>.xlsx, .xls and .csv supported</small>
       </button>
       <input ref={fileInput} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} />
@@ -831,7 +817,11 @@ function CompareExcel({ notify, askFormat, sharedFile, setSharedFile }) {
   </section>;
 }
 
-function CompareUpload({ title, file, inputRef, onClick, onChange }) { return <div className={`compare-upload ${file ? 'uploaded' : ''}`}><input ref={inputRef} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={onChange} /><span className="compare-file-icon"><FileSpreadsheet size={23} /></span><span className="compare-label">{title}</span>{file ? <><b>{file.name}</b><small>{file.rows} rows</small><button className="text-button" onClick={onClick}>Change file</button></> : <><p>Choose an Excel or CSV file to compare.</p><button className="uiverse-upload-btn" onClick={onClick}><Upload size={16} /> Upload File</button></>}</div>; }
+function CompareUpload({ title, file, inputRef, onClick, onChange, type = 'compare' }) { 
+  return <div className={`compare-upload ${file ? 'uploaded' : ''}`}><input ref={inputRef} className="hidden-input" type="file" accept=".xlsx,.xls,.csv" onChange={onChange} /><span className="compare-file-icon"><FileSpreadsheet size={23} /></span><span className="compare-label">{title}</span>{file ? <><b>{file.name}</b><small>{file.rows} rows</small><button className="text-button" onClick={onClick}>Change file</button></> : <><p>Choose an Excel or CSV file to {type}.</p>
+  <button onClick={onClick} style={{ background: 'transparent', border: 0, padding: 0 }}><DocumentsBtn text="Browse files" /></button>
+  </>}</div>; 
+}
 function ResultCount({ label, count, blue, green }) { return <div className={`result-count ${blue ? 'blue' : ''} ${green ? 'green' : ''}`}><span>{label}</span><b>{count}</b></div>; }
 
 function SettingsPage({ notify }) { const [checked, setChecked] = useState(true); return <section className="page settings-page"><PageIntro eyebrow="SETTINGS" title="Your preferences" text="These settings apply only on this device." /><div className="settings-card"><div><span className="setting-icon"><ShieldCheck /></span><div><h3>Protect your privacy</h3><p>Clear temporary files when you start a new task or close the app.</p></div></div><button className={`switch ${checked ? 'on' : ''}`} aria-label="Clear files on close" onClick={() => { setChecked(!checked); notify(`Temporary-file cleanup ${!checked ? 'enabled' : 'disabled'}`, 'info'); }}><span /></button></div><div className="settings-card"><div><span className="setting-icon"><FolderOpen /></span><div><h3>Download location</h3><p>Each export will ask where you want to save the CSV file.</p></div></div><button className="button button-secondary" onClick={() => notify('Your system will choose the download location', 'info')}>Change</button></div></section>; }
@@ -879,7 +869,7 @@ function MergeExcel({ notify, askFormat, sharedFile, setSharedFile }) {
   };
 
   return <section className="page compare-page"><PageIntro eyebrow="MERGE EXCEL" title="Merge Data" text="Seamlessly append the records of two different datasets." />
-    <div className="compare-card"><div className="compare-upload-grid"><CompareUpload title="Primary Excel file" file={files.first} inputRef={firstRef} onClick={() => firstRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('first', event.target.files[0])} /><div className="vs-badge">+</div><CompareUpload title="Secondary Excel file" file={files.second} inputRef={secondRef} onClick={() => secondRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('second', event.target.files[0])} /></div>
+    <div className="compare-card"><div className="compare-upload-grid"><CompareUpload title="Primary Excel file" file={files.first} inputRef={firstRef} onClick={() => firstRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('first', event.target.files[0])} type="merge" /><div className="vs-badge">+</div><CompareUpload title="Secondary Excel file" file={files.second} inputRef={secondRef} onClick={() => secondRef.current?.click()} onChange={event => event.target.files?.[0] && setFile('second', event.target.files[0])} type="merge" /></div>
       
       {bothFiles && <div className="compare-controls"><div></div><button className="button button-primary" onClick={mergeFiles}><Merge size={18} /> Merge files</button></div>}
     </div>
@@ -940,6 +930,18 @@ function StandaloneArrange({ notify, askFormat, setSharedFile, setPage }) {
       </>}
     </div>
   </section>;
+}
+function DocumentsBtn({ text = "Browse files" }) {
+  return (
+    <span className="Documents-btn">
+      <span className="folderContainer">
+        <svg className="fileBack" viewBox="0 0 146 113" fill="#1b6bbb"><path d="M0 16C0 7.163 7.163 0 16 0h40l20 20h54c8.837 0 16 7.163 16 16v77H0z" /></svg>
+        <svg className="filePage" viewBox="0 0 100 120" fill="white"><rect x="0" y="0" width="100" height="120" rx="8" /><path d="M20 30h60M20 50h60M20 70h40" stroke="#1b6bbb" strokeWidth="6" strokeLinecap="round" /></svg>
+        <svg className="fileFront" viewBox="0 0 146 80" fill="#3D9BFC"><path d="M0 0h146v64c0 8.837-7.163 16-16 16H16c-8.837 0-16-7.163-16-16z" /></svg>
+      </span>
+      <span className="text">{text}</span>
+    </span>
+  );
 }
 
 export default App;
