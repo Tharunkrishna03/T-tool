@@ -204,7 +204,7 @@ export function UploadStep({ file, onUpload, onContinue }) {
 export function ReviewStep({ rows, sheet, sheets, rowCount, columns, search, setSearch, onSheetChange, onMerge, onEdit, onTableAction, changes, onUndo, onRestart, onBack, onContinue }) {
   const [zoom, setZoom] = useState(1);
   return <div className="step-content review-step"><div className="split-step-heading"><div className="step-title"><span className="step-kicker">STEP 02</span><h2>Review your data</h2><p>Double-click a cell to make a quick correction.</p></div><div className="sheet-select"><span>Select sheet</span><label><TableProperties size={16} /><select value={sheet} onChange={e => onSheetChange(e.target.value)}>{sheets.map(name => <option key={name}>{name}</option>)}</select><ChevronDown size={15} /></label></div></div>
-    <div className="review-toolbar"><div className="search-box"><Search size={18} /><input aria-label="Search data" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search data..." /></div><button className="toolbar-button" onClick={() => setZoom(z => z + 0.1)}><ZoomIn size={16} /> Zoom In</button><button className="toolbar-button" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))}><ZoomOut size={16} /> Zoom Out</button><button className="toolbar-button"><Filter size={16} /> Filter</button><span className="data-stat">Rows: {Number(rowCount).toLocaleString()} <i /> Columns: {columns.length}</span><button className="toolbar-button" onClick={onRestart} style={{ color: '#db5b66' }}><RefreshCw size={16} /> Reset Dataset</button><button className="undo-button" onClick={onUndo} disabled={!changes.length}><Undo2 size={16} /> Undo last change</button></div>
+    <div className="review-toolbar"><div className="search-box"><Search size={18} /><input aria-label="Search data" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search data..." /></div><button className="toolbar-button" aria-label="Zoom In" title="Zoom In" onClick={() => setZoom(z => z + 0.1)}><ZoomIn size={16} /></button><button className="toolbar-button" aria-label="Zoom Out" title="Zoom Out" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))}><ZoomOut size={16} /></button><button className="toolbar-button" aria-label="Filter" title="Filter"><Filter size={16} /></button><span className="data-stat">Rows: {Number(rowCount).toLocaleString()} <i /> Columns: {columns.length}</span><button className="toolbar-button" aria-label="Reset Dataset" title="Reset Dataset" onClick={onRestart} style={{ color: '#db5b66' }}><RefreshCw size={16} /></button><button className="undo-button" aria-label="Undo last change" title="Undo last change" onClick={onUndo} disabled={!changes.length}><Undo2 size={16} /></button></div>
     <div className="sheet-detail"><b>{sheet}</b><span>{Number(rowCount).toLocaleString()} rows</span><button onClick={onMerge} disabled={sheets.length < 2}><Merge size={15} /> Merge sheets</button></div>
     <DataTable zoom={zoom} rows={rows} search={search} changes={changes} onEdit={onEdit} onTableAction={onTableAction} />
     <StepFooter onBack={onBack} onContinue={onContinue} />
@@ -340,19 +340,19 @@ export function ArrangeStep({ mapping, setMapping, file, columns, confidence, se
 
   return <div className="step-content arrange-step">
     <div className="split-step-heading"><div className="step-title"><span className="step-kicker">STEP 04</span><h2>Arrange your columns</h2><p>Your final export will contain these selected fields for <b>{file?.name || 'your dataset'}</b>.</p></div><button className="button button-primary" onClick={autoMap}><Sparkles size={17} /> Reset columns</button></div>
-    <div className="mapping-head" style={{ gridTemplateColumns: '50px 1.2fr 1.6fr 100px' }}><span>SOURCE COLUMN</span><span>TARGET NAME</span><span>STATUS</span></div>
+    <div className="mapping-head" style={{ gridTemplateColumns: '50px 1fr 220px 100px' }}><span>SOURCE COLUMN</span><span>TARGET NAME</span><span>STATUS</span></div>
     <div className="mapping-list">
       {mapping.map((item, index) => <div 
           key={item.source} 
           className={`mapping-container ${index % 2 !== 0 ? 'even-row' : ''}`} 
-          style={{ marginBottom: '14px', borderRadius: '8px', border: '1px solid #edf3f8', background: dragOverItem === index ? '#f2f8fc' : '', transition: 'background 0.2s', opacity: item.included ? 1 : 0.4 }}
+          style={{ marginBottom: '14px', borderRadius: '8px', border: dragOverItem === index ? '2px dashed #b0c4d6' : '1px solid #edf3f8', background: dragOverItem === index ? '#f2f8fc' : '#fff', transition: 'all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)', transform: draggedItem === index ? 'scale(1.02)' : (dragOverItem === index ? 'scale(0.98)' : 'scale(1)'), boxShadow: draggedItem === index ? '0 12px 24px -6px rgba(0,0,0,0.1)' : 'none', opacity: draggedItem === index ? 0.8 : (item.included ? 1 : 0.4), zIndex: draggedItem === index ? 20 : 1 }}
           draggable 
           onDragStart={() => setDraggedItem(index)}
           onDragEnter={() => setDragOverItem(index)}
           onDragEnd={handleSort}
           onDragOver={(e) => e.preventDefault()}
         >
-        <div className="mapping-row" style={{ gridTemplateColumns: '50px 1.2fr 1.6fr 100px', border: 0, background: 'transparent' }}>
+        <div className="mapping-row" style={{ gridTemplateColumns: '50px 1fr 220px 100px', border: 0, background: 'transparent' }}>
           <span className="mapping-index" title="Drag to reorder" style={{ cursor: 'grab', display: 'flex', alignItems: 'center', gap: '3px' }}>
             <GripVertical size={13} style={{ color: '#b0c4d6' }} />
             {String(index + 1).padStart(2, '0')}
